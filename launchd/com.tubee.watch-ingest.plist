@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    com.tubee.watch-ingest.plist
+    ============================
+    launchd service definition for the Tubee volume watcher daemon.
+
+    Installation:
+        cp /Users/agentarri/tubee/launchd/com.tubee.watch-ingest.plist \
+           ~/Library/LaunchAgents/com.tubee.watch-ingest.plist
+
+        launchctl load ~/Library/LaunchAgents/com.tubee.watch-ingest.plist
+
+    Management:
+        launchctl start com.tubee.watch-ingest    # Start manually
+        launchctl stop com.tubee.watch-ingest     # Stop
+        launchctl unload ~/Library/LaunchAgents/com.tubee.watch-ingest.plist  # Remove
+
+    Check status:
+        launchctl list | grep tubee
+
+    View logs:
+        tail -f ~/footage/ingest.log
+        tail -f /tmp/com.tubee.watch-ingest.stdout
+        tail -f /tmp/com.tubee.watch-ingest.stderr
+-->
+<plist version="1.0">
+<dict>
+
+    <!-- Unique identifier for this service -->
+    <key>Label</key>
+    <string>com.tubee.watch-ingest</string>
+
+    <!-- The program to run -->
+    <key>ProgramArguments</key>
+    <array>
+        <!-- Use the Python from your virtualenv or system Python 3 -->
+        <string>/usr/bin/python3</string>
+        <string>/Users/agentarri/tubee/scripts/watch_ingest.py</string>
+        <string>--dest</string>
+        <string>/Users/agentarri/footage</string>
+        <string>--log</string>
+        <string>/Users/agentarri/footage/ingest.log</string>
+        <!--
+            Uncomment to enable auto-edit after every ingest:
+            <string>- -auto-edit</string>
+            <string>Create a fast-paced highlight reel with cuts on beat</string>
+        -->
+    </array>
+
+    <!-- Start automatically when the user logs in -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Keep running — restart if it crashes -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!--
+        Working directory.
+        The script resolves paths from here when needed.
+    -->
+    <key>WorkingDirectory</key>
+    <string>/Users/agentarri/tubee</string>
+
+    <!--
+        Environment variables.
+        Adjust PYTHONPATH if you use a virtualenv.
+    -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/agentarri</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+        <!--
+            If Tubee uses a virtualenv, set PYTHONPATH here:
+            <key>PYTHONPATH</key>
+            <string>/Users/agentarri/tubee/venv/lib/python3.11/site-packages</string>
+        -->
+    </dict>
+
+    <!-- Standard output log (separate from ingest.log for launchd-level errors) -->
+    <key>StandardOutPath</key>
+    <string>/tmp/com.tubee.watch-ingest.stdout</string>
+
+    <!-- Standard error log -->
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.tubee.watch-ingest.stderr</string>
+
+    <!--
+        Throttle interval: if the daemon crashes, wait 10s before restarting.
+        Prevents CPU spin if something is fundamentally broken.
+    -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!--
+        Process type: Background is appropriate for daemon services.
+        Options: Background, Standard, Adaptive, Interactive
+    -->
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <!-- Low priority I/O — don't interfere with main work -->
+    <key>LowPriorityIO</key>
+    <true/>
+
+</dict>
+</plist>

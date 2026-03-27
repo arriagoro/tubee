@@ -1,0 +1,32 @@
+# Tubee — AI Video Editor Dependencies
+# Install with: pip install -r requirements.txt
+# Note: FFmpeg must be installed separately (brew install ffmpeg on macOS)
+
+# ─── Web Server ───────────────────────────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9        # Required for FastAPI file uploads
+
+# ─── AI / Claude ──────────────────────────────────────────────────────────────
+anthropic>=0.25.0              # Claude API SDK
+
+# ─── Scene Detection ──────────────────────────────────────────────────────────
+scenedetect[opencv]>=0.6.3     # PySceneDetect with OpenCV backend
+
+# ─── Beat / Audio Analysis ────────────────────────────────────────────────────
+librosa>=0.10.0                # Beat detection and audio analysis
+soundfile>=0.12.1              # Audio file I/O (used by librosa)
+numba>=0.59.0                  # JIT compilation (speeds up librosa significantly)
+
+# ─── Video Assembly ───────────────────────────────────────────────────────────
+moviepy>=1.0.3                 # Video clip editing and assembly
+ffmpeg-python>=0.2.0           # FFmpeg Python bindings (optional, we also call ffmpeg directly)
+
+# ─── Utilities ────────────────────────────────────────────────────────────────
+numpy>=1.24.0                  # Numerical computing (used by librosa, scenedetect)
+pydantic>=2.0.0                # Data validation (FastAPI uses this)
+watchdog>=4.0.0                # File system watching (for watch_folder.py)
+
+# ─── Optional (for development/debugging) ────────────────────────────────────
+# httpx>=0.27.0                # For testing FastAPI endpoints
+# rich>=13.0.0                 # Pretty console output
