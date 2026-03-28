@@ -11,3 +11,5 @@ jobs/
 *.avi
 *.mkv
 .DS_Store
+frontend/node_modules/
+frontend/.next/
