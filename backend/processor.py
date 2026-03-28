@@ -24,6 +24,7 @@ from pathlib import Path
 from scene_detect import detect_scenes
 from beat_sync import detect_beats
 from ai_editor import get_edit_decisions
+from effects import apply_style_preset
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ def process_job(
     output_path: str,
     job_id: str,
     progress_callback: Optional[callable] = None,
+    style_preset: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Main processing pipeline. Takes raw footage and returns a finished video.
@@ -66,6 +68,8 @@ def process_job(
         output_path: Where to save the final MP4.
         job_id: Unique job identifier for logging.
         progress_callback: Optional callback(stage: str, pct: int) for progress updates.
+        style_preset: Optional style preset to apply to the final video before audio mix.
+                      Options: "cole_bennett", "cinematic", "vintage", "clean", "neon".
 
     Returns:
         Dict with:
@@ -170,17 +174,39 @@ def process_job(
         if not segment_files:
             raise RuntimeError("No segments were extracted")
 
-        progress("Concatenating clips", 80)
+        progress("Concatenating clips", 75)
 
         # Build intermediate video (no audio yet)
         concat_video = os.path.join(tmp_dir, "concat.mp4")
         _concat_segments(segment_files, concat_video)
 
+        # --- STEP 5 (optional): Apply style preset ---
+        styled_video = concat_video
+        if style_preset:
+            valid_presets = {"cole_bennett", "cinematic", "vintage", "clean", "neon"}
+            if style_preset in valid_presets:
+                progress(f"Applying '{style_preset}' style preset", 82)
+                styled_path = os.path.join(tmp_dir, "styled.mp4")
+                # Pass beat timestamps if available for beat-synced effects
+                beat_ts = beat_data.get("beats", []) if beat_data else []
+                styled_result = apply_style_preset(
+                    concat_video, styled_path,
+                    preset=style_preset,
+                    beat_timestamps=beat_ts,
+                )
+                if styled_result:
+                    styled_video = styled_result
+                    logger.info(f"[{job_id}] Style preset '{style_preset}' applied")
+                else:
+                    logger.warning(f"[{job_id}] Style preset '{style_preset}' failed, using ungraded video")
+            else:
+                logger.warning(f"[{job_id}] Unknown style preset '{style_preset}', skipping. Valid: {valid_presets}")
+
         progress("Mixing audio and exporting", 90)
 
-        # --- STEP 5: Mix audio and export ---
+        # --- STEP 6: Mix audio and export ---
         _export_final(
-            video_path=concat_video,
+            video_path=styled_video,
             music_file=music_file,
             output_path=output_path,
         )
@@ -614,16 +640,19 @@ if __name__ == "__main__":
     )
 
     if len(sys.argv) < 3:
-        print("Usage: python processor.py <output.mp4> <video1> [video2 ...] [--music <music_file>] [--prompt 'your prompt']")
+        print("Usage: python processor.py <output.mp4> <video1> [video2 ...] [--music <music_file>] [--prompt 'your prompt'] [--style <preset>]")
         print()
         print("Example:")
-        print("  python processor.py output.mp4 clip1.mp4 clip2.mp4 --music song.mp3 --prompt 'Fast-paced highlight reel'")
+        print("  python processor.py output.mp4 clip1.mp4 clip2.mp4 --music song.mp3 --prompt 'Fast-paced highlight reel' --style cole_bennett")
+        print()
+        print("Style presets: cole_bennett, cinematic, vintage, clean, neon")
         sys.exit(1)
 
     output = sys.argv[1]
     videos = []
     music = None
     prompt = "Create an engaging highlight video"
+    style = None
     i = 2
     while i < len(sys.argv):
         arg = sys.argv[i]
@@ -633,10 +662,13 @@ if __name__ == "__main__":
         elif arg == "--prompt" and i + 1 < len(sys.argv):
             prompt = sys.argv[i + 1]
             i += 2
+        elif arg == "--style" and i + 1 < len(sys.argv):
+            style = sys.argv[i + 1]
+            i += 2
         else:
             videos.append(arg)
             i += 1
 
     job_id = str(uuid.uuid4())[:8]
-    result = process_job(videos, music, prompt, output, job_id)
+    result = process_job(videos, music, prompt, output, job_id, style_preset=style)
     print(json.dumps(result, indent=2))

@@ -17,8 +17,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-# Claude model to use — claude-3-5-sonnet is great for structured reasoning
-CLAUDE_MODEL = "claude-sonnet-4-6"
+# Model routing — use cheaper models to save money
+# claude-haiku-4-5 is ~10x cheaper than Sonnet and great for structured editing decisions
+# Switch to "claude-sonnet-4-6" only for complex creative prompts
+CLAUDE_MODEL = os.environ.get("TUBEE_MODEL", "claude-haiku-4-5-20251001")
 
 
 def build_edit_prompt(
@@ -41,9 +43,9 @@ def build_edit_prompt(
     """
     total_raw_duration = sum(s["duration"] for s in scenes)
 
+    # Compact scene format to save tokens — ~60% less than verbose format
     scene_summary = "\n".join([
-        f"  Scene {s['scene_num']}: {s['start_time']:.2f}s – {s['end_time']:.2f}s "
-        f"(duration: {s['duration']:.2f}s)"
+        f"  S{s['scene_num']}: {s['start_time']:.1f}-{s['end_time']:.1f}s ({s['duration']:.1f}s)"
         for s in scenes
     ])
 
