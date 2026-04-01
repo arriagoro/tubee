@@ -807,6 +807,134 @@ def apply_text(
 
 
 # ---------------------------------------------------------------------------
+# Kinetic Typography (animated text synced to beats)
+# ---------------------------------------------------------------------------
+
+@_safe_output
+def apply_kinetic_text(
+    input_path: str,
+    output_path: str,
+    words: List[str],
+    beat_timestamps: List[float],
+    font_size: int = 90,
+    color: str = "white",
+    style: str = "scale_bounce",
+) -> Optional[str]:
+    """
+    Beat-synced kinetic typography — each word appears on a beat with animation.
+
+    Styles:
+        - "scale_bounce": Words scale up from 0 → 120% → 100% on each beat
+        - "slide_up": Words slide in from below on each beat
+        - "pop_rotate": Words pop in with slight rotation
+
+    Args:
+        input_path: Source video.
+        output_path: Destination.
+        words: List of words/phrases to display (one per beat).
+        beat_timestamps: Beat timestamps in seconds.
+        font_size: Base font size.
+        color: Text color.
+        style: Animation style.
+
+    Returns:
+        output_path on success, None on failure.
+    """
+    if not words or not beat_timestamps:
+        logger.warning("kinetic_text: no words or beats provided, skipping")
+        return None
+
+    info = _get_video_info(input_path)
+    vid_duration = info.get("duration", 30.0)
+
+    # Pair each word with a beat timestamp
+    pairs = list(zip(beat_timestamps, words))
+    filters = []
+
+    for i, (beat_t, word) in enumerate(pairs):
+        safe_word = word.replace("'", "'\\\\\\''").replace(":", "\\:").replace("%", "%%")
+
+        # Each word shows for the gap between this beat and the next (or 0.8s)
+        if i + 1 < len(pairs):
+            word_dur = min(pairs[i + 1][0] - beat_t, 2.0)
+        else:
+            word_dur = min(vid_duration - beat_t, 1.5)
+        word_dur = max(word_dur, 0.2)
+
+        end_t = beat_t + word_dur
+        attack = min(0.15, word_dur / 3)  # fast pop-in
+
+        if style == "scale_bounce":
+            # Scale from 0 → 1.2 → 1.0 via fontsize expression
+            fs_expr = (
+                f"if(lt(t,{beat_t}),0,"
+                f"if(lt(t,{beat_t + attack}),"
+                f"{int(font_size * 1.3)}*(t-{beat_t})/{attack},"
+                f"if(lt(t,{beat_t + attack * 2}),"
+                f"{int(font_size * 1.3)}-{int(font_size * 0.3)}*(t-{beat_t + attack})/{attack},"
+                f"if(lt(t,{end_t}),{font_size},0))))"
+            )
+            alpha_expr = (
+                f"if(lt(t,{beat_t}),0,"
+                f"if(lt(t,{beat_t + attack}),(t-{beat_t})/{attack},"
+                f"if(lt(t,{end_t - 0.1}),1,"
+                f"if(lt(t,{end_t}),({end_t}-t)/0.1,0))))"
+            )
+            y_expr = "(h-text_h)/2"
+        elif style == "slide_up":
+            # Slide from below screen to center
+            fs_expr = str(font_size)
+            alpha_expr = (
+                f"if(lt(t,{beat_t}),0,"
+                f"if(lt(t,{end_t - 0.1}),1,"
+                f"if(lt(t,{end_t}),({end_t}-t)/0.1,0)))"
+            )
+            y_expr = (
+                f"if(lt(t,{beat_t}),h,"
+                f"if(lt(t,{beat_t + attack}),"
+                f"h-(h/2+text_h/2)*(t-{beat_t})/{attack},"
+                f"(h-text_h)/2))"
+            )
+        else:  # pop_rotate / default
+            fs_expr = str(font_size)
+            alpha_expr = (
+                f"if(lt(t,{beat_t}),0,"
+                f"if(lt(t,{beat_t + attack}),(t-{beat_t})/{attack},"
+                f"if(lt(t,{end_t - 0.1}),1,"
+                f"if(lt(t,{end_t}),({end_t}-t)/0.1,0))))"
+            )
+            y_expr = "(h-text_h)/2"
+
+        dt_filter = (
+            f"drawtext=text='{safe_word}':"
+            f"fontsize='{fs_expr}':"
+            f"fontcolor={color}:"
+            f"x=(w-text_w)/2:y='{y_expr}':"
+            f"alpha='{alpha_expr}':"
+            f"shadowcolor=black@0.7:shadowx=3:shadowy=3"
+        )
+        filters.append(dt_filter)
+
+    # Chain all drawtext filters
+    filter_chain = ",".join(filters)
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-vf", filter_chain,
+        "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+        "-c:a", "copy",
+        "-pix_fmt", "yuv420p",
+        output_path,
+    ]
+
+    if _run_ffmpeg(cmd):
+        logger.info(f"Kinetic text applied: {len(pairs)} words on beats, style={style}")
+        return output_path
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Combo: Style Presets
 # ---------------------------------------------------------------------------
 
@@ -870,6 +998,16 @@ def apply_style_preset(
             "flash_beats": False,
             "rgb_split": 0,
             "letterbox": None,
+        },
+        "vintage_2026": {
+            "grade": grade_vintage,
+            "grain": 25,
+            "vignette": 0.5,
+            "zoom_beats": False,
+            "zoom_intensity": 1.0,
+            "flash_beats": False,
+            "rgb_split": 2,             # subtle chromatic aberration for analog feel
+            "letterbox": "4:3",         # retro 4:3 crop with pillarboxing
         },
         "clean": {
             "grade": grade_cinematic,  # Subtle grade

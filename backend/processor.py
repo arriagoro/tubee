@@ -31,6 +31,25 @@ logger = logging.getLogger(__name__)
 # Default export settings — Instagram Reel (9:16 vertical, 1080x1920)
 DEFAULT_RESOLUTION = (1080, 1920)  # Instagram Reel / TikTok / Shorts
 DEFAULT_FPS = 30
+
+# Aspect ratio presets — width x height for common platforms
+ASPECT_RATIOS = {
+    "9:16": (1080, 1920),   # Reels / TikTok / Shorts (default)
+    "1:1":  (1080, 1080),   # Instagram feed square
+    "4:5":  (1080, 1350),   # Instagram feed portrait
+    "16:9": (1920, 1080),   # YouTube / landscape
+    "4:3":  (1440, 1080),   # Retro / vintage aesthetic
+}
+
+
+def get_resolution(aspect_ratio: Optional[str] = None) -> tuple:
+    """
+    Get (width, height) for a given aspect ratio string.
+    Falls back to 9:16 (vertical) if not found.
+    """
+    if aspect_ratio and aspect_ratio in ASPECT_RATIOS:
+        return ASPECT_RATIOS[aspect_ratio]
+    return DEFAULT_RESOLUTION
 DEFAULT_VIDEO_CODEC = "libx264"
 DEFAULT_AUDIO_CODEC = "aac"
 DEFAULT_VIDEO_BITRATE = "8M"
@@ -57,6 +76,7 @@ def process_job(
     job_id: str,
     progress_callback: Optional[callable] = None,
     style_preset: Optional[str] = None,
+    aspect_ratio: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Main processing pipeline. Takes raw footage and returns a finished video.
@@ -83,6 +103,11 @@ def process_job(
         logger.info(f"[{job_id}] [{pct}%] {stage}")
         if progress_callback:
             progress_callback(stage, pct)
+
+    # Resolve output resolution from aspect ratio
+    res = get_resolution(aspect_ratio)
+    output_width, output_height = res
+    logger.info(f"[{job_id}] Output format: {aspect_ratio or '9:16'} → {output_width}x{output_height}")
 
     if not video_files:
         raise ValueError("No video files provided")
@@ -169,7 +194,7 @@ def process_job(
     progress("Cutting and assembling clips", 60)
 
     with tempfile.TemporaryDirectory(prefix=f"tubee_{job_id}_") as tmp_dir:
-        segment_files = _extract_segments(clips_plan, file_scene_map, tmp_dir, job_id)
+        segment_files = _extract_segments(clips_plan, file_scene_map, tmp_dir, job_id, output_width, output_height)
 
         if not segment_files:
             raise RuntimeError("No segments were extracted")
@@ -183,7 +208,7 @@ def process_job(
         # --- STEP 5 (optional): Apply style preset ---
         styled_video = concat_video
         if style_preset:
-            valid_presets = {"cole_bennett", "cinematic", "vintage", "clean", "neon"}
+            valid_presets = {"cole_bennett", "cinematic", "vintage", "vintage_2026", "clean", "neon"}
             if style_preset in valid_presets:
                 progress(f"Applying '{style_preset}' style preset", 82)
                 styled_path = os.path.join(tmp_dir, "styled.mp4")
@@ -261,6 +286,8 @@ def _extract_segments(
     scene_map: Dict[int, Dict[str, Any]],
     tmp_dir: str,
     job_id: str,
+    output_width: int = 1080,
+    output_height: int = 1920,
 ) -> List[str]:
     """
     Extract each planned clip from its source video using FFmpeg.
@@ -312,8 +339,8 @@ def _extract_segments(
             "-c:v", DEFAULT_VIDEO_CODEC,
             "-crf", "16",
             "-preset", "slow",
-            "-vf", f"scale={DEFAULT_RESOLUTION[0]}:{DEFAULT_RESOLUTION[1]}:force_original_aspect_ratio=increase,"
-                   f"crop={DEFAULT_RESOLUTION[0]}:{DEFAULT_RESOLUTION[1]},unsharp=5:5:1.0:5:5:0.0",
+            "-vf", f"scale={output_width}:{output_height}:force_original_aspect_ratio=increase,"
+                   f"crop={output_width}:{output_height},unsharp=5:5:1.0:5:5:0.0",
             "-r", str(DEFAULT_FPS),
             "-pix_fmt", "yuv420p",
             "-c:a", DEFAULT_AUDIO_CODEC,

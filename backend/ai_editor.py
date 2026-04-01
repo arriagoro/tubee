@@ -20,7 +20,39 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 # Model routing — use cheaper models to save money
 # claude-haiku-4-5 is ~10x cheaper than Sonnet and great for structured editing decisions
 # Switch to "claude-sonnet-4-6" only for complex creative prompts
-CLAUDE_MODEL = os.environ.get("TUBEE_MODEL", "claude-haiku-4-5-20251001")
+CLAUDE_MODEL_FAST = os.environ.get("TUBEE_MODEL_FAST", "claude-haiku-4-5-20251001")
+CLAUDE_MODEL_PREMIUM = os.environ.get("TUBEE_MODEL_PREMIUM", "claude-opus-4-6-20250320")
+
+# Complexity keywords that trigger premium model routing
+_COMPLEX_KEYWORDS = {
+    "narrative", "story", "cinematic", "emotional", "dramatic",
+    "documentary", "creative", "artistic", "mood", "atmosphere",
+    "professional", "premium", "high quality", "best quality",
+}
+
+
+def smart_route_model(user_prompt: str, scene_count: int) -> str:
+    """
+    Route to Haiku (fast/cheap) or Opus (premium) based on prompt complexity.
+    
+    Uses Opus 4.6 when:
+      - Prompt contains creative/complex keywords
+      - Many scenes (>15) requiring nuanced selection
+      - Prompt is long (>200 chars), suggesting detailed creative direction
+    """
+    prompt_lower = user_prompt.lower()
+    
+    # Check for complexity signals
+    has_complex_keywords = any(kw in prompt_lower for kw in _COMPLEX_KEYWORDS)
+    many_scenes = scene_count > 15
+    detailed_prompt = len(user_prompt) > 200
+    
+    if has_complex_keywords or (many_scenes and detailed_prompt):
+        logger.info(f"Smart routing → Opus 4.6 (complex edit detected)")
+        return CLAUDE_MODEL_PREMIUM
+    
+    logger.info(f"Smart routing → Haiku (standard edit)")
+    return CLAUDE_MODEL_FAST
 
 
 def build_edit_prompt(
@@ -66,6 +98,17 @@ def build_edit_prompt(
 
     prompt = f"""You are a professional video editor AI. Your job is to create an edit decision list (EDL) based on the raw footage scenes and the user's creative brief.
 
+TRENDING STYLES (April 2026 — use these when the user asks for "viral", "trending", or "social media" edits):
+- Fast Jump Cuts: Remove all dead air, cut every 1-3 seconds, keep energy high from frame 1
+- Beat-Synced Cuts: Every major cut lands on a beat or downbeat — this is non-negotiable for music videos
+- Kinetic Pacing: Start fast, breathe for 2-3 seconds mid-video, then accelerate to the end
+- Hook First: The most visually striking scene goes in the first 1.5 seconds, not at the end
+- Seamless Transitions: Prefer motion-matched cuts (whip pan → whip pan) over hard cuts when scenes have similar movement
+- UGC-Style Authenticity: Slightly imperfect, handheld feel with jump cuts — 161% higher conversion for brands
+- Micro-Cinematic: Short clips (15-30s) with cinematic color grading and shallow depth of field feel
+- Anime/Stylized Color: Bold, saturated color grades inspired by the anime/Ghibli aesthetic trend
+- Pattern Interrupts: Insert a 0.5-1s visual surprise (flash, zoom, reverse) every 5-7 seconds to reset attention
+
 USER'S EDIT REQUEST:
 "{user_prompt}"
 
@@ -83,7 +126,8 @@ INSTRUCTIONS:
 4. For each selected scene, decide the CLIP IN/OUT points (you can use just a portion of each scene).
 5. Align cut points to beat timestamps when music is provided.
 6. Keep the overall pace and energy appropriate to the user's request.
-7. Total output should be engaging — usually 30 seconds to 3 minutes depending on content.
+7. STRICTLY follow the duration specified in the user's prompt. If they say "20-30 seconds", the total of all clip durations MUST be between 20-30 seconds. If they say "60 seconds", hit 60 seconds. This is the most important rule — duration MUST match what the user asked for.
+8. Add up the clip durations as you plan them to make sure you hit the target.
 
 RESPOND WITH VALID JSON ONLY. No explanation, no markdown, just raw JSON in this exact format:
 {{
@@ -147,11 +191,14 @@ def get_edit_decisions(
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         prompt = build_edit_prompt(scenes, beat_data, user_prompt, target_duration)
 
-        logger.info(f"Sending edit request to Claude ({CLAUDE_MODEL})...")
+        # Smart model routing based on prompt complexity and scene count
+        selected_model = smart_route_model(user_prompt, len(scenes))
+
+        logger.info(f"Sending edit request to Claude ({selected_model})...")
         logger.debug(f"Prompt length: {len(prompt)} chars")
 
         response = client.messages.create(
-            model=CLAUDE_MODEL,
+            model=selected_model,
             max_tokens=4096,
             messages=[
                 {

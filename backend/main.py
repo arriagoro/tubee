@@ -29,6 +29,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, F
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -44,9 +45,17 @@ BASE_DIR = Path(__file__).parent.parent
 UPLOADS_DIR = BASE_DIR / "uploads"
 OUTPUTS_DIR = BASE_DIR / "outputs"
 JOBS_DIR = BASE_DIR / "jobs"
+GENERATED_DIR = BASE_DIR / "generated"
 
-for d in [UPLOADS_DIR, OUTPUTS_DIR, JOBS_DIR]:
+for d in [UPLOADS_DIR, OUTPUTS_DIR, JOBS_DIR, GENERATED_DIR]:
     d.mkdir(parents=True, exist_ok=True)
+
+# Load .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    pass
 
 # ---------------------------------------------------------------------------
 # Job state management
@@ -80,6 +89,20 @@ class EditRequest(BaseModel):
     job_id: str
     prompt: str
     target_duration: Optional[float] = None
+    style: Optional[str] = None          # Style preset: cole_bennett, cinematic, vintage, clean, neon
+    aspect_ratio: Optional[str] = None   # Aspect ratio: 9:16, 1:1, 4:5, 16:9, 4:3
+
+
+class GenerateRequest(BaseModel):
+    prompt: str
+    duration: Optional[int] = 5           # 4, 8, or 16 seconds
+    style: Optional[str] = "cinematic"    # cinematic, action, vlog, music_video, documentary
+    aspect_ratio: Optional[str] = "9:16"  # 9:16, 16:9, 1:1
+
+
+class UpscaleRequest(BaseModel):
+    job_id: str
+    scale: Optional[int] = 4              # 2 or 4
 
 
 class JobStatus(BaseModel):
@@ -242,11 +265,24 @@ async def start_edit(
     job["updated_at"] = datetime.utcnow().isoformat()
     save_job(job_id)
 
+    # Map frontend style names to backend preset names
+    style_map = {
+        "cinematic": "cinematic", "Cinematic": "cinematic",
+        "music video": "cole_bennett", "Music Video": "cole_bennett",
+        "retro": "vintage", "Retro": "vintage",
+        "minimal": "clean", "Minimal": "clean",
+        "hype": "neon", "Hype": "neon",
+        "neon": "neon", "Neon": "neon",
+    }
+    backend_style = style_map.get(request.style) if request.style else None
+
     # Run processing in background thread (CPU-bound work)
     background_tasks.add_task(
         _run_processing_task,
         job_id=job_id,
         target_duration=request.target_duration,
+        style_preset=backend_style,
+        aspect_ratio=request.aspect_ratio,
     )
 
     return {
@@ -352,10 +388,129 @@ async def delete_job(job_id: str) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Generate endpoint — AI video generation
+# ---------------------------------------------------------------------------
+
+@app.post("/generate", summary="Generate a video from a text prompt")
+async def generate_video_endpoint(
+    request: GenerateRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    Generate a video using AI (Runway ML, Kling AI, or Luma Dream Machine).
+    Processing runs asynchronously — poll GET /status/{job_id} for progress.
+    """
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting AI video generation",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": request.prompt,
+        "video_files": [],
+        "music_file": None,
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_generate_task,
+        job_id=job_id,
+        prompt=request.prompt,
+        duration=request.duration or 5,
+        style=request.style or "cinematic",
+        aspect_ratio=request.aspect_ratio or "9:16",
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": "Generation started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Upscale endpoint — AI/FFmpeg video upscaling
+# ---------------------------------------------------------------------------
+
+@app.post("/upscale", summary="Upscale a video")
+async def upscale_video_endpoint(
+    request: UpscaleRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    Upscale a completed video using Real-ESRGAN (AI) or FFmpeg lanczos fallback.
+    Provide a job_id of a completed edit or generation job.
+    Works locally — no API key required.
+    """
+    source_job_id = request.job_id
+    if source_job_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Source job {source_job_id} not found")
+
+    source_job = jobs[source_job_id]
+    if source_job["status"] != "done":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Source job is not complete (status: {source_job['status']})"
+        )
+
+    source_path = source_job.get("output_path")
+    if not source_path or not os.path.exists(source_path):
+        raise HTTPException(status_code=404, detail="Source video file not found")
+
+    scale = request.scale or 4
+    if scale not in (2, 4):
+        raise HTTPException(status_code=400, detail="Scale must be 2 or 4")
+
+    # Create a new job for the upscale
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": f"Starting {scale}x upscale",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": f"Upscale {scale}x from job {source_job_id[:8]}",
+        "video_files": [],
+        "music_file": None,
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_upscale_task,
+        job_id=job_id,
+        source_path=source_path,
+        scale=scale,
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": f"Upscale ({scale}x) started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Background processing
 # ---------------------------------------------------------------------------
 
-def _run_processing_task(job_id: str, target_duration: Optional[float] = None) -> None:
+def _run_processing_task(job_id: str, target_duration: Optional[float] = None, style_preset: Optional[str] = None, aspect_ratio: Optional[str] = None) -> None:
     """
     Background thread that runs the full processing pipeline.
     Updates job status as it progresses.
@@ -384,6 +539,8 @@ def _run_processing_task(job_id: str, target_duration: Optional[float] = None) -
             output_path=output_path,
             job_id=job_id,
             progress_callback=progress_callback,
+            style_preset=style_preset,
+            aspect_ratio=aspect_ratio,
         )
 
         # Success
@@ -402,6 +559,95 @@ def _run_processing_task(job_id: str, target_duration: Optional[float] = None) -
 
     except Exception as e:
         logger.error(f"[{job_id}] Processing failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+def _run_generate_task(job_id: str, prompt: str, duration: int, style: str, aspect_ratio: str) -> None:
+    """Background task: AI video generation."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+
+    from video_generator import generate_video, VideoGenerationError, NoAPIKeyError
+
+    def progress_callback(stage: str, pct: int):
+        jobs[job_id]["stage"] = stage
+        jobs[job_id]["progress"] = pct
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+    try:
+        result = generate_video(
+            prompt=prompt,
+            duration=duration,
+            aspect_ratio=aspect_ratio,
+            style=style,
+            progress_callback=progress_callback,
+        )
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": result["output_path"],
+            "edit_notes": f"Generated with {result['provider']}",
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Video generation complete via {result['provider']}")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Generation failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+def _run_upscale_task(job_id: str, source_path: str, scale: int) -> None:
+    """Background task: video upscaling."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+
+    from upscaler import upscale_video
+
+    output_path = str(OUTPUTS_DIR / f"{job_id}_upscaled.mp4")
+
+    def progress_callback(stage: str, pct: int):
+        jobs[job_id]["stage"] = stage
+        jobs[job_id]["progress"] = pct
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+    try:
+        result = upscale_video(
+            input_path=source_path,
+            output_path=output_path,
+            scale=scale,
+            progress_callback=progress_callback,
+        )
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": result["output_path"],
+            "edit_notes": f"Upscaled {result['original_resolution']} → {result['upscaled_resolution']} ({result['method']})",
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Upscale complete: {result['original_resolution']} → {result['upscaled_resolution']}")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Upscale failed: {e}", exc_info=True)
         jobs[job_id].update({
             "status": "error",
             "stage": "Failed",
