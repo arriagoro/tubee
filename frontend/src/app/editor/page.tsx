@@ -164,6 +164,13 @@ export default function EditorPage() {
         }}>
           ✨ Generate
         </Link>
+        <Link href="/captions" style={{
+          flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
+          background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
+          borderRight: '1px solid #222',
+        }}>
+          💬 Captions
+        </Link>
         <Link href="/upscale" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
           background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,

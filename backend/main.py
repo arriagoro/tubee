@@ -100,6 +100,18 @@ class GenerateRequest(BaseModel):
     aspect_ratio: Optional[str] = "9:16"  # 9:16, 16:9, 1:1
 
 
+class CaptionRequest(BaseModel):
+    job_id: str
+    style: Optional[str] = "temitayo"     # temitayo, standard, minimal, bold
+    word_by_word: Optional[bool] = False
+
+
+class VoiceoverRequest(BaseModel):
+    text: str
+    voice_id: Optional[str] = None
+    job_id: Optional[str] = None          # Attach to existing video job
+
+
 class UpscaleRequest(BaseModel):
     job_id: str
     scale: Optional[int] = 4              # 2 or 4
@@ -648,6 +660,310 @@ def _run_upscale_task(job_id: str, source_path: str, scale: int) -> None:
 
     except Exception as e:
         logger.error(f"[{job_id}] Upscale failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+# ---------------------------------------------------------------------------
+# Captions endpoint
+# ---------------------------------------------------------------------------
+
+@app.post("/captions", summary="Add captions to a video")
+async def add_captions_endpoint(
+    request: CaptionRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    Add auto-generated captions to a completed video job.
+    Uses Whisper for transcription and FFmpeg for burning captions.
+    """
+    source_job_id = request.job_id
+    if source_job_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Source job {source_job_id} not found")
+
+    source_job = jobs[source_job_id]
+    if source_job["status"] != "done":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Source job is not complete (status: {source_job['status']})"
+        )
+
+    source_path = source_job.get("output_path")
+    if not source_path or not os.path.exists(source_path):
+        raise HTTPException(status_code=404, detail="Source video file not found")
+
+    style = request.style or "temitayo"
+    if style not in ("temitayo", "standard", "minimal", "bold"):
+        raise HTTPException(status_code=400, detail=f"Invalid style: {style}")
+
+    # Create new job for captioned output
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting caption generation",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": f"Captions ({style}) from job {source_job_id[:8]}",
+        "video_files": [],
+        "music_file": None,
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_captions_task,
+        job_id=job_id,
+        source_path=source_path,
+        style=style,
+        word_by_word=request.word_by_word or False,
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": f"Caption generation started ({style}). Poll GET /status/{job_id} for progress.",
+    }
+
+
+@app.post("/captions/upload", summary="Upload a video and add captions")
+async def upload_and_caption(
+    file: UploadFile = File(...),
+    style: str = Form("temitayo"),
+    word_by_word: bool = Form(False),
+    background_tasks: BackgroundTasks = None,
+) -> Dict[str, Any]:
+    """Upload a video file directly and add captions to it."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
+
+    job_id = str(uuid.uuid4())
+    job_upload_dir = UPLOADS_DIR / job_id
+    job_upload_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_name = "".join(c for c in file.filename if c.isalnum() or c in "._- ")
+    dest = job_upload_dir / safe_name
+
+    with open(dest, "wb") as f:
+        content = await file.read()
+        f.write(content)
+
+    now = datetime.utcnow().isoformat()
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting caption generation",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": f"Captions ({style}) — uploaded video",
+        "video_files": [str(dest)],
+        "music_file": None,
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_captions_task,
+        job_id=job_id,
+        source_path=str(dest),
+        style=style,
+        word_by_word=word_by_word,
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": f"Caption generation started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Voiceover endpoint
+# ---------------------------------------------------------------------------
+
+@app.post("/voiceover", summary="Generate voiceover from text")
+async def generate_voiceover_endpoint(
+    request: VoiceoverRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    Generate voiceover audio from text using ElevenLabs.
+    Optionally attach to an existing video job.
+    """
+    if not request.text or not request.text.strip():
+        raise HTTPException(status_code=400, detail="Text cannot be empty")
+
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting voiceover generation",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": f"Voiceover: {request.text[:80]}...",
+        "video_files": [],
+        "music_file": None,
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+    }
+    save_job(job_id)
+
+    attach_video_path = None
+    if request.job_id and request.job_id in jobs:
+        source_job = jobs[request.job_id]
+        if source_job.get("status") == "done" and source_job.get("output_path"):
+            attach_video_path = source_job["output_path"]
+
+    background_tasks.add_task(
+        _run_voiceover_task,
+        job_id=job_id,
+        text=request.text,
+        voice_id=request.voice_id,
+        attach_video_path=attach_video_path,
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": "Voiceover generation started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+@app.get("/voices", summary="List available voices")
+async def list_voices_endpoint() -> Dict[str, Any]:
+    """List available ElevenLabs voices."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from voiceover import list_voices
+    voices = list_voices()
+    return {"voices": voices}
+
+
+# ---------------------------------------------------------------------------
+# Background tasks: captions and voiceover
+# ---------------------------------------------------------------------------
+
+def _run_captions_task(job_id: str, source_path: str, style: str, word_by_word: bool) -> None:
+    """Background task: auto-caption a video."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from captions import add_captions_to_video
+
+    output_path = str(OUTPUTS_DIR / f"{job_id}_captioned.mp4")
+
+    def progress_callback(stage: str, pct: int):
+        jobs[job_id]["stage"] = stage
+        jobs[job_id]["progress"] = pct
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+    try:
+        result = add_captions_to_video(
+            video_path=source_path,
+            output_path=output_path,
+            style=style,
+            word_by_word=word_by_word,
+            progress_callback=progress_callback,
+        )
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": result["output_path"],
+            "edit_notes": f"Captions ({style}){' word-by-word' if word_by_word else ''} — {result['segments_count']} segments",
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Captions complete: {result['segments_count']} segments")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Captions failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+def _run_voiceover_task(job_id: str, text: str, voice_id: Optional[str], attach_video_path: Optional[str]) -> None:
+    """Background task: generate voiceover and optionally attach to video."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from voiceover import generate_voiceover, add_voiceover_to_video
+
+    def progress_callback(stage: str, pct: int):
+        jobs[job_id]["stage"] = stage
+        jobs[job_id]["progress"] = pct
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+    try:
+        progress_callback("Generating speech", 20)
+
+        audio_output = str(GENERATED_DIR / f"{job_id}_voiceover.mp3")
+        vo_result = generate_voiceover(
+            text=text,
+            voice_id=voice_id,
+            output_path=audio_output,
+        )
+
+        progress_callback("Speech generated", 60)
+
+        final_output = vo_result["output_path"]
+        edit_notes = f"Voiceover via {vo_result['provider']} ({vo_result['duration']:.1f}s)"
+
+        if attach_video_path and os.path.exists(attach_video_path):
+            progress_callback("Mixing with video", 70)
+            video_output = str(OUTPUTS_DIR / f"{job_id}_with_voiceover.mp4")
+            mix_result = add_voiceover_to_video(
+                video_path=attach_video_path,
+                audio_path=vo_result["output_path"],
+                output_path=video_output,
+            )
+            final_output = mix_result["output_path"]
+            edit_notes += f" — mixed into video ({mix_result['duration']:.1f}s)"
+
+        progress_callback("Complete", 100)
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": final_output,
+            "edit_notes": edit_notes,
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Voiceover complete: {edit_notes}")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Voiceover failed: {e}", exc_info=True)
         jobs[job_id].update({
             "status": "error",
             "stage": "Failed",

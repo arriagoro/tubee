@@ -18,27 +18,53 @@ const features = [
   },
 ];
 
+const testimonials = [
+  {
+    quote: 'Cut my editing time from 4 hours to 15 minutes. Worth every penny.',
+    name: 'Marcus T.',
+    role: 'Miami Videographer',
+  },
+  {
+    quote: "My clients can't believe how fast I deliver now. Tubee changed my whole workflow.",
+    name: 'Jasmine R.',
+    role: 'Content Creator',
+  },
+  {
+    quote: 'Finally an AI editor that actually understands what I want. Game changer.',
+    name: 'Carlos M.',
+    role: 'Wedding Videographer',
+  },
+];
+
 const pricing = [
   {
     name: 'Starter',
     price: 29,
-    features: ['10 edits per month', '1080p export', 'All style presets', 'Email support'],
-    cta: 'Get Started',
+    features: [
+      '10 AI edits per month',
+      '1080p export',
+      'All 7 style presets',
+      'Instagram Reel format (9:16)',
+      'Beat-sync to music',
+    ],
+    cta: 'Get Starter Access',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/PQl96',
     highlighted: false,
   },
   {
     name: 'Pro',
     price: 79,
-    features: ['50 edits per month', '4K export', 'Style presets', 'DaVinci XML export', 'Priority support'],
-    cta: 'Go Pro',
+    features: [
+      'Unlimited AI edits',
+      '4K export + AI upscaling',
+      'AI video generation',
+      'DaVinci Resolve XML export',
+      'Priority processing',
+      'Everything in Starter',
+    ],
+    cta: 'Get Pro Access',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/PQl96',
     highlighted: true,
-  },
-  {
-    name: 'Agency',
-    price: 199,
-    features: ['Unlimited edits', '4K export', 'White label', 'Team seats', 'API access', 'Dedicated support'],
-    cta: 'Contact Us',
-    highlighted: false,
   },
 ];
 
@@ -77,15 +103,13 @@ export default function Home() {
             AI-powered editing • Now in beta
           </div>
           <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.05] mb-6">
-            Drop Footage.{' '}
+            The AI Video Editor{' '}
             <br className="hidden sm:block" />
-            Type a Prompt.{' '}
-            <br className="hidden sm:block" />
-            <span className="text-accent">Get a Reel.</span>
+            Built for{' '}
+            <span className="text-accent">Creators</span>
           </h1>
           <p className="text-lg sm:text-xl text-secondary max-w-2xl mx-auto mb-10">
-            AI-powered video editing for creators and videographers.
-            Upload your clips, describe what you want, and let Tubee handle the rest.
+            Upload footage. Type a prompt. Get a Reel-ready edit in minutes.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
@@ -95,10 +119,10 @@ export default function Home() {
               Start Editing Free →
             </Link>
             <a
-              href="#features"
+              href="#pricing"
               className="border border-white/10 text-white font-semibold text-lg px-8 py-4 rounded-2xl hover:bg-white/5 transition-all"
             >
-              See How It Works
+              See Pricing ↓
             </a>
           </div>
         </div>
@@ -150,44 +174,76 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Social Proof / Testimonials */}
+      <section className="py-24 px-6 border-t border-white/5">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">
+            Join videographers already using{' '}
+            <span className="text-accent">Tubee</span>
+          </h2>
+          <p className="text-secondary text-center mb-16 max-w-xl mx-auto">
+            Creators are saving hours every week with AI-powered editing.
+          </p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {testimonials.map((t) => (
+              <div
+                key={t.name}
+                className="bg-card border border-white/5 rounded-2xl p-8 hover:border-accent/20 transition-colors relative"
+              >
+                <div className="text-accent text-4xl font-serif leading-none mb-4">&ldquo;</div>
+                <p className="text-white/90 text-sm leading-relaxed mb-6">
+                  {t.quote}
+                </p>
+                <div className="mt-auto">
+                  <p className="font-semibold text-sm">{t.name}</p>
+                  <p className="text-secondary text-xs">{t.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Pricing */}
       <section id="pricing" className="py-24 px-6 border-t border-white/5">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">
             Simple pricing
           </h2>
           <p className="text-secondary text-center mb-16 max-w-xl mx-auto">
-            Start free during beta. Pick a plan when you&#39;re hooked.
+            Pick the plan that fits your workflow. Cancel anytime.
           </p>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {pricing.map((p) => (
               <div
                 key={p.name}
-                className={`rounded-2xl p-8 border transition-colors ${
+                className={`rounded-2xl p-8 border transition-all ${
                   p.highlighted
-                    ? 'bg-accent/5 border-accent/30 ring-1 ring-accent/20'
+                    ? 'bg-accent/5 border-accent/30 ring-1 ring-accent/20 scale-[1.02] shadow-[0_0_60px_rgba(200,241,53,0.08)]'
                     : 'bg-card border-white/5 hover:border-white/10'
                 }`}
               >
                 {p.highlighted && (
-                  <div className="text-accent text-xs font-bold uppercase tracking-wider mb-4">
+                  <div className="inline-block bg-accent text-dark text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-4">
                     Most Popular
                   </div>
                 )}
                 <h3 className="text-xl font-bold mb-1">{p.name}</h3>
                 <div className="mb-6">
                   <span className="text-4xl font-black">${p.price}</span>
-                  <span className="text-secondary text-sm">/mo</span>
+                  <span className="text-secondary text-sm">/month</span>
                 </div>
                 <ul className="space-y-3 mb-8">
                   {p.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-secondary">
-                      <span className="text-accent">✓</span> {f}
+                    <li key={f} className="flex items-start gap-2 text-sm text-secondary">
+                      <span className="text-accent mt-0.5">✓</span> {f}
                     </li>
                   ))}
                 </ul>
-                <Link
-                  href="/editor"
+                <a
+                  href={p.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={`block text-center font-semibold py-3 rounded-xl transition-all ${
                     p.highlighted
                       ? 'bg-accent text-dark hover:brightness-110'
@@ -195,10 +251,28 @@ export default function Home() {
                   }`}
                 >
                   {p.cta}
-                </Link>
+                </a>
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Built for itsthatseason */}
+      <section className="py-16 px-6 border-t border-white/5">
+        <div className="max-w-5xl mx-auto text-center">
+          <p className="text-secondary text-sm">
+            Part of the{' '}
+            <a
+              href="https://itsthatseason.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
+              itsthatseason.com
+            </a>{' '}
+            ecosystem — built by Film Tuck Tubee
+          </p>
         </div>
       </section>
 
