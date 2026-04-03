@@ -264,11 +264,18 @@ export default function GeneratePage() {
       {/* ── Error ────────────────────────────────────────── */}
       {error && (
         <div style={{
-          background: '#2a0a0a', border: '1px solid #f44', borderRadius: 12,
-          padding: 14, marginBottom: 16, color: '#f88', fontSize: 14,
-          whiteSpace: 'pre-wrap',
+          background: 'rgba(0,100,255,0.08)', border: '1px solid rgba(0,170,255,0.3)', borderRadius: 12,
+          padding: 16, marginBottom: 16, color: '#aaccff', fontSize: 14,
         }}>
-          ⚠️ {error}
+          <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 16 }}>🚀 AI Generation — Coming Soon!</div>
+          <div style={{ marginBottom: 12, color: '#8899bb' }}>
+            AI video generation from text prompts is being activated. In the meantime, use the <strong style={{color: '#00AAFF'}}>Edit tab</strong> to upload your footage and get a professional AI edit in minutes!
+          </div>
+          <a href="/editor" style={{
+            display: 'inline-block', background: 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+            color: '#fff', padding: '10px 20px', borderRadius: 8, textDecoration: 'none',
+            fontWeight: 700, fontSize: 14,
+          }}>✂️ Go to Edit Tab →</a>
         </div>
       )}
 
