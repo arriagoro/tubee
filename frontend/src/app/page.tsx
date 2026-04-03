@@ -48,7 +48,7 @@ const pricing = [
       'Beat-sync to music',
     ],
     cta: 'Get Starter Access',
-    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/PQl96',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/l7PQ5',
     highlighted: false,
   },
   {
@@ -63,7 +63,7 @@ const pricing = [
       'Everything in Starter',
     ],
     cta: 'Get Pro Access',
-    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/PQl96',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/oyPRj',
     highlighted: true,
   },
 ];
