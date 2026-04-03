@@ -28,6 +28,18 @@ const TRANSITIONS = [
   { label: 'Mixed', value: 'mixed' },
 ];
 
+const EXPORT_QUALITIES = [
+  { label: '1080p', value: '1080p', badge: null },
+  { label: '2K', value: '2k', badge: null },
+  { label: '4K', value: '4k', badge: 'Pro' },
+];
+
+const OUTPUT_FORMATS = [
+  { label: 'Reels (9:16)', value: 'reels' },
+  { label: 'Landscape (16:9)', value: 'landscape' },
+  { label: 'Square (1:1)', value: 'square' },
+];
+
 type Stage = 'idle' | 'uploading' | 'editing' | 'polling' | 'done' | 'error';
 
 export default function EditorPage() {
@@ -37,6 +49,8 @@ export default function EditorPage() {
   const [style, setStyle] = useState('Cinematic');
   const [aspectRatio, setAspectRatio] = useState('9:16');
   const [transition, setTransition] = useState('hard_cut');
+  const [exportQuality, setExportQuality] = useState('1080p');
+  const [outputFormat, setOutputFormat] = useState('reels');
   const [stage, setStage] = useState<Stage>('idle');
   const [progress, setProgress] = useState(0);
   const [statusMsg, setStatusMsg] = useState('');
@@ -113,7 +127,7 @@ export default function EditorPage() {
       const editRes = await fetch(`${API}/edit`, {
         method: 'POST',
         headers: { ...HEADERS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: id, prompt, style, aspect_ratio: aspectRatio, transition_style: transition }),
+        body: JSON.stringify({ job_id: id, prompt, style, aspect_ratio: aspectRatio, transition_style: transition, export_quality: exportQuality, output_format: outputFormat }),
       });
       if (!editRes.ok) throw new Error(`Edit request failed (${editRes.status})`);
 
@@ -136,7 +150,7 @@ export default function EditorPage() {
 
   const handleReset = () => {
     setVideoFiles([]); setMusicFile(null); setPrompt(''); setStyle('Cinematic');
-    setTransition('hard_cut');
+    setTransition('hard_cut'); setExportQuality('1080p'); setOutputFormat('reels');
     setStage('idle'); setProgress(0); setStatusMsg(''); setJobId(null); setError('');
     if (pollRef.current) clearInterval(pollRef.current);
   };
@@ -317,29 +331,68 @@ export default function EditorPage() {
         </div>
       </div>
 
-      {/* ── Aspect Ratio ────────────────────────────────── */}
+      {/* ── Export Quality ─────────────────────────────── */}
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>EXPORT QUALITY</p>
+        <div style={{
+          display: 'flex', gap: 8, overflowX: 'auto',
+          paddingBottom: 8, WebkitOverflowScrolling: 'touch',
+        }}>
+          {EXPORT_QUALITIES.map(q => (
+            <button
+              key={q.value}
+              onClick={() => setExportQuality(q.value)}
+              disabled={isWorking}
+              style={{
+                flexShrink: 0, padding: '10px 18px',
+                borderRadius: 99, border: 'none',
+                background: exportQuality === q.value ? '#00AAFF' : '#0D1526',
+                color: exportQuality === q.value ? '#fff' : '#8899BB',
+                fontSize: 14, fontWeight: exportQuality === q.value ? 700 : 500,
+                cursor: isWorking ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              {q.label}
+              {q.badge && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 6px',
+                  borderRadius: 6,
+                  background: exportQuality === q.value ? 'rgba(255,255,255,0.2)' : 'rgba(0,170,255,0.15)',
+                  color: exportQuality === q.value ? '#fff' : '#00AAFF',
+                }}>
+                  {q.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Output Format ──────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
         <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>FORMAT</p>
         <div style={{
           display: 'flex', gap: 8, overflowX: 'auto',
           paddingBottom: 8, WebkitOverflowScrolling: 'touch',
         }}>
-          {ASPECT_RATIOS.map(ar => (
+          {OUTPUT_FORMATS.map(f => (
             <button
-              key={ar.label}
-              onClick={() => setAspectRatio(ar.label)}
+              key={f.value}
+              onClick={() => setOutputFormat(f.value)}
               disabled={isWorking}
               style={{
-                flexShrink: 0, padding: '10px 16px',
+                flexShrink: 0, padding: '10px 18px',
                 borderRadius: 99, border: 'none',
-                background: aspectRatio === ar.label ? '#00AAFF' : '#0D1526',
-                color: aspectRatio === ar.label ? '#fff' : '#8899BB',
-                fontSize: 13, fontWeight: aspectRatio === ar.label ? 700 : 500,
+                background: outputFormat === f.value ? '#00AAFF' : '#0D1526',
+                color: outputFormat === f.value ? '#fff' : '#8899BB',
+                fontSize: 14, fontWeight: outputFormat === f.value ? 700 : 500,
                 cursor: isWorking ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
               }}
             >
-              {ar.icon} {ar.label}
+              {f.label}
             </button>
           ))}
         </div>

@@ -42,7 +42,7 @@ const pricing = [
     price: 29,
     features: [
       '10 AI edits per month',
-      '1080p export',
+      '1080p HD Export',
       'All 7 style presets',
       'Instagram Reel format (9:16)',
       'Beat-sync to music',
@@ -56,7 +56,8 @@ const pricing = [
     price: 79,
     features: [
       'Unlimited AI edits',
-      '4K export + AI upscaling',
+      '2K & 4K Ultra Export',
+      'All export formats (Reels, Landscape, Square)',
       'AI video generation',
       'DaVinci Resolve XML export',
       'Priority processing',

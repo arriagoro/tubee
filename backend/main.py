@@ -92,6 +92,8 @@ class EditRequest(BaseModel):
     style: Optional[str] = None          # Style preset: cole_bennett, cinematic, vintage, clean, neon
     aspect_ratio: Optional[str] = None   # Aspect ratio: 9:16, 1:1, 4:5, 16:9, 4:3
     transition_style: Optional[str] = None  # Transition: hard_cut, whip_pan, circle_reveal, swipe, zoom_blur, glitch, mixed, fade
+    export_quality: str = "1080p"        # Export quality: "1080p", "2k", "4k"
+    output_format: str = "reels"         # Output format: "reels", "landscape", "square"
 
 
 class GenerateRequest(BaseModel):
@@ -310,6 +312,8 @@ async def start_edit(
         style_preset=backend_style,
         aspect_ratio=request.aspect_ratio,
         transition_style=backend_transition,
+        export_quality=request.export_quality,
+        output_format=request.output_format,
     )
 
     return {
@@ -537,7 +541,7 @@ async def upscale_video_endpoint(
 # Background processing
 # ---------------------------------------------------------------------------
 
-def _run_processing_task(job_id: str, target_duration: Optional[float] = None, style_preset: Optional[str] = None, aspect_ratio: Optional[str] = None, transition_style: Optional[str] = None) -> None:
+def _run_processing_task(job_id: str, target_duration: Optional[float] = None, style_preset: Optional[str] = None, aspect_ratio: Optional[str] = None, transition_style: Optional[str] = None, export_quality: Optional[str] = None, output_format: Optional[str] = None) -> None:
     """
     Background thread that runs the full processing pipeline.
     Updates job status as it progresses.
@@ -569,6 +573,8 @@ def _run_processing_task(job_id: str, target_duration: Optional[float] = None, s
             style_preset=style_preset,
             aspect_ratio=aspect_ratio,
             transition_style=transition_style,
+            export_quality=export_quality,
+            output_format=output_format,
         )
 
         # Success

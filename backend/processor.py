@@ -32,7 +32,60 @@ logger = logging.getLogger(__name__)
 DEFAULT_RESOLUTION = (1080, 1920)  # Instagram Reel / TikTok / Shorts
 DEFAULT_FPS = 30
 
-# Aspect ratio presets — width x height for common platforms
+# ── Export quality tiers ─────────────────────────────────────────────────
+QUALITY_TIERS = {
+    "1080p": {
+        "crf": "18",
+        "preset": "slow",
+        "video_bitrate": "8M",
+        "max_bitrate": "10M",
+    },
+    "2k": {
+        "crf": "16",
+        "preset": "slow",
+        "video_bitrate": "16M",
+        "max_bitrate": "20M",
+    },
+    "4k": {
+        "crf": "14",
+        "preset": "slow",
+        "video_bitrate": "40M",
+        "max_bitrate": "50M",
+    },
+}
+
+# ── Output format presets ────────────────────────────────────────────────
+OUTPUT_FORMATS = {
+    "reels": {
+        "aspect": "9:16",
+        "orientation": "portrait",
+        "resolutions": {
+            "1080p": (1080, 1920),
+            "2k":    (1440, 2560),
+            "4k":    (2160, 3840),
+        },
+    },
+    "landscape": {
+        "aspect": "16:9",
+        "orientation": "landscape",
+        "resolutions": {
+            "1080p": (1920, 1080),
+            "2k":    (2560, 1440),
+            "4k":    (3840, 2160),
+        },
+    },
+    "square": {
+        "aspect": "1:1",
+        "orientation": "square",
+        "resolutions": {
+            "1080p": (1080, 1080),
+            "2k":    (1440, 1440),
+            "4k":    (2160, 2160),
+        },
+    },
+}
+
+# Legacy aspect ratio presets (backward compat)
 ASPECT_RATIOS = {
     "9:16": (1080, 1920),   # Reels / TikTok / Shorts (default)
     "1:1":  (1080, 1080),   # Instagram feed square
@@ -42,10 +95,26 @@ ASPECT_RATIOS = {
 }
 
 
+def get_quality_settings(export_quality: str = "1080p") -> dict:
+    """Return CRF / bitrate / preset for a quality tier. Falls back to 1080p."""
+    return QUALITY_TIERS.get(export_quality, QUALITY_TIERS["1080p"])
+
+
+def get_format_resolution(
+    output_format: str = "reels",
+    export_quality: str = "1080p",
+) -> tuple:
+    """Get (width, height) based on output_format and export_quality."""
+    fmt = OUTPUT_FORMATS.get(output_format, OUTPUT_FORMATS["reels"])
+    res_map = fmt["resolutions"]
+    return res_map.get(export_quality, res_map["1080p"])
+
+
 def get_resolution(aspect_ratio: Optional[str] = None) -> tuple:
     """
     Get (width, height) for a given aspect ratio string.
     Falls back to 9:16 (vertical) if not found.
+    (Legacy helper — new code should use get_format_resolution.)
     """
     if aspect_ratio and aspect_ratio in ASPECT_RATIOS:
         return ASPECT_RATIOS[aspect_ratio]
@@ -85,6 +154,8 @@ def process_job(
     style_preset: Optional[str] = None,
     aspect_ratio: Optional[str] = None,
     transition_style: Optional[str] = None,
+    export_quality: Optional[str] = None,
+    output_format: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Main processing pipeline. Takes raw footage and returns a finished video.
@@ -101,6 +172,8 @@ def process_job(
         transition_style: Transition between clips. Options: "hard_cut" (default),
                           "whip_pan", "circle_reveal", "swipe", "zoom_blur",
                           "glitch", "mixed", "fade".
+        export_quality: Export quality tier — "1080p" (default), "2k", or "4k".
+        output_format: Output format — "reels" (9:16), "landscape" (16:9), or "square" (1:1).
 
     Returns:
         Dict with:
@@ -115,10 +188,21 @@ def process_job(
         if progress_callback:
             progress_callback(stage, pct)
 
-    # Resolve output resolution from aspect ratio
-    res = get_resolution(aspect_ratio)
-    output_width, output_height = res
-    logger.info(f"[{job_id}] Output format: {aspect_ratio or '9:16'} → {output_width}x{output_height}")
+    # Resolve output resolution from format + quality (new) or aspect_ratio (legacy)
+    effective_quality = export_quality if export_quality in QUALITY_TIERS else "1080p"
+    effective_format = output_format if output_format in OUTPUT_FORMATS else None
+
+    if effective_format:
+        output_width, output_height = get_format_resolution(effective_format, effective_quality)
+    else:
+        res = get_resolution(aspect_ratio)
+        output_width, output_height = res
+
+    quality_cfg = get_quality_settings(effective_quality)
+    logger.info(
+        f"[{job_id}] Output: {effective_format or aspect_ratio or 'reels'} @ {effective_quality} "
+        f"→ {output_width}x{output_height} (CRF {quality_cfg['crf']})"
+    )
 
     if not video_files:
         raise ValueError("No video files provided")
@@ -209,7 +293,10 @@ def process_job(
     progress("Cutting and assembling clips", 60)
 
     with tempfile.TemporaryDirectory(prefix=f"tubee_{job_id}_") as tmp_dir:
-        segment_files = _extract_segments(clips_plan, file_scene_map, tmp_dir, job_id, output_width, output_height)
+        segment_files = _extract_segments(
+            clips_plan, file_scene_map, tmp_dir, job_id,
+            output_width, output_height, quality_cfg,
+        )
 
         if not segment_files:
             raise RuntimeError("No segments were extracted")
@@ -272,6 +359,7 @@ def process_job(
             video_path=styled_video,
             music_file=music_file,
             output_path=output_path,
+            quality_cfg=quality_cfg,
         )
 
     # Get output duration
@@ -326,6 +414,7 @@ def _extract_segments(
     job_id: str,
     output_width: int = 1080,
     output_height: int = 1920,
+    quality_cfg: Optional[Dict[str, str]] = None,
 ) -> List[str]:
     """
     Extract each planned clip from its source video using FFmpeg.
@@ -335,10 +424,15 @@ def _extract_segments(
         scene_map: Maps scene_num to scene metadata (including source file).
         tmp_dir: Directory to write segment files.
         job_id: For logging.
+        output_width: Target width.
+        output_height: Target height.
+        quality_cfg: Quality tier settings (crf, preset, bitrate).
 
     Returns:
         List of paths to extracted segment MP4 files, in order.
     """
+    if quality_cfg is None:
+        quality_cfg = QUALITY_TIERS["1080p"]
     segment_files = []
 
     for clip in clips_plan:
@@ -375,8 +469,10 @@ def _extract_segments(
             "-t", str(duration),
             # Re-encode to ensure consistent format for concat
             "-c:v", DEFAULT_VIDEO_CODEC,
-            "-crf", "16",
-            "-preset", "slow",
+            "-crf", quality_cfg["crf"],
+            "-preset", quality_cfg["preset"],
+            "-maxrate", quality_cfg["max_bitrate"],
+            "-bufsize", quality_cfg["max_bitrate"],
             "-vf", f"scale={output_width}:{output_height}:force_original_aspect_ratio=increase,"
                    f"crop={output_width}:{output_height},unsharp=5:5:1.0:5:5:0.0",
             "-r", str(DEFAULT_FPS),
@@ -440,9 +536,10 @@ def _export_final(
     video_path: str,
     music_file: Optional[str],
     output_path: str,
+    quality_cfg: Optional[Dict[str, str]] = None,
 ) -> None:
     """
-    Mix audio with video and export final 1080p MP4.
+    Mix audio with video and export final MP4 at the requested quality tier.
     If music is provided, mixes it with original audio (music at 80%, original at 30%).
     If no music, exports with original audio only.
 
@@ -450,7 +547,10 @@ def _export_final(
         video_path: Path to concatenated video (with original audio).
         music_file: Optional path to music file.
         output_path: Final output path.
+        quality_cfg: Quality tier settings (crf, preset, bitrate).
     """
+    if quality_cfg is None:
+        quality_cfg = QUALITY_TIERS["1080p"]
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     if music_file:
