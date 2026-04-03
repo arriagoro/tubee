@@ -130,6 +130,10 @@ def process_job(
         logger.info(f"[{job_id}] Scanning scenes in: {os.path.basename(vf)}")
         try:
             scenes = detect_scenes(vf)
+            # If no scenes detected, treat entire clip as one scene
+            if not scenes:
+                logger.info(f"[{job_id}] No scenes detected in {os.path.basename(vf)}, treating as single scene")
+                scenes = _get_video_as_single_scene(vf)
         except Exception as e:
             logger.warning(f"Scene detection failed for {vf}: {e}, treating as single scene")
             scenes = _get_video_as_single_scene(vf)
