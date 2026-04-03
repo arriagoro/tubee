@@ -166,15 +166,34 @@ def generate_with_kling(
     Returns:
         Path to the downloaded video file
     """
-    api_key = os.environ.get("KLING_API_KEY")
-    if not api_key:
+    access_key = os.environ.get("KLING_ACCESS_KEY") or os.environ.get("KLING_API_KEY")
+    secret_key = os.environ.get("KLING_SECRET_KEY")
+
+    if not access_key:
         raise NoAPIKeyError(
-            "KLING_API_KEY not set. Get your key at https://klingai.com/"
+            "KLING_ACCESS_KEY not set. Get your key at https://kling.ai/dev"
         )
+
+    # Kling uses JWT auth — generate token from access + secret keys
+    import time, hmac, hashlib, base64
+    def _kling_jwt(ak: str, sk: str) -> str:
+        header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').rstrip(b'=').decode()
+        now = int(time.time())
+        payload_dict = {"iss": ak, "exp": now + 1800, "nbf": now - 5}
+        import json as _json
+        payload_b64 = base64.urlsafe_b64encode(_json.dumps(payload_dict, separators=(',',':')).encode()).rstrip(b'=').decode()
+        sig_input = f"{header}.{payload_b64}".encode()
+        sig = base64.urlsafe_b64encode(hmac.new(sk.encode(), sig_input, hashlib.sha256).digest()).rstrip(b'=').decode()
+        return f"{header}.{payload_b64}.{sig}"
+
+    if secret_key:
+        token = _kling_jwt(access_key, secret_key)
+    else:
+        token = access_key  # fallback to direct key
 
     base_url = "https://api.klingai.com/v1"
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
 
