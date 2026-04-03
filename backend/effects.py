@@ -1122,6 +1122,207 @@ def apply_style_preset(
 
 
 # ---------------------------------------------------------------------------
+# 11. Mask Transitions (clip-to-clip)
+# ---------------------------------------------------------------------------
+
+TRANSITION_TYPES = [
+    "hard_cut", "fade", "whip_pan", "circle_reveal",
+    "swipe_left", "swipe_right", "zoom_blur", "glitch",
+]
+
+
+@_safe_output
+def apply_transition(
+    clip1_path: str,
+    clip2_path: str,
+    output_path: str,
+    transition_type: str = "whip_pan",
+    duration: float = 0.3,
+) -> Optional[str]:
+    """
+    Apply a mask transition between two clips.
+
+    Trims the last `duration` seconds of clip1 and the first `duration` seconds
+    of clip2, blends them with the chosen effect, then concatenates:
+      clip1_body + transition_segment + clip2_body
+
+    Args:
+        clip1_path: First clip (outgoing).
+        clip2_path: Second clip (incoming).
+        output_path: Destination path.
+        transition_type: One of TRANSITION_TYPES.
+        duration: Transition length in seconds (0.2–0.4 recommended).
+
+    Returns:
+        output_path on success, None on failure.
+    """
+    if transition_type == "hard_cut":
+        # Simple concat, no blending
+        return _concat_two_clips(clip1_path, clip2_path, output_path)
+
+    info1 = _get_video_info(clip1_path)
+    info2 = _get_video_info(clip2_path)
+    dur1 = info1.get("duration", 0)
+    dur2 = info2.get("duration", 0)
+
+    # Clamp transition duration so it doesn't exceed either clip
+    duration = min(duration, dur1 * 0.5, dur2 * 0.5, 0.5)
+    if duration < 0.05:
+        return _concat_two_clips(clip1_path, clip2_path, output_path)
+
+    w = info1.get("width", 1080)
+    h = info1.get("height", 1920)
+
+    # Use xfade filter for most transitions — clean and efficient
+    xfade_map = {
+        "fade":          "fade",
+        "whip_pan":      "smoothleft",
+        "circle_reveal": "circleopen",
+        "swipe_left":    "slideleft",
+        "swipe_right":   "slideright",
+        "zoom_blur":     "smoothup",
+        "glitch":        "pixelize",
+    }
+
+    xfade_name = xfade_map.get(transition_type)
+    if not xfade_name:
+        # Unknown type — fallback to fade
+        xfade_name = "fade"
+
+    offset = dur1 - duration
+
+    # Video: xfade between the two clips
+    # Audio: acrossfade between the two clips
+    filter_complex = (
+        f"[0:v][1:v]xfade=transition={xfade_name}:duration={duration:.3f}:offset={offset:.3f}[vout];"
+        f"[0:a][1:a]acrossfade=d={duration:.3f}:c1=tri:c2=tri[aout]"
+    )
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", clip1_path,
+        "-i", clip2_path,
+        "-filter_complex", filter_complex,
+        "-map", "[vout]", "-map", "[aout]",
+        "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+        "-c:a", "aac", "-b:a", "192k",
+        "-pix_fmt", "yuv420p",
+        output_path,
+    ]
+
+    if _run_ffmpeg(cmd):
+        return output_path
+
+    # Fallback: if xfade fails, try simple concat
+    logger.warning(f"Transition '{transition_type}' failed, falling back to hard cut")
+    return _concat_two_clips(clip1_path, clip2_path, output_path)
+
+
+def _concat_two_clips(clip1_path: str, clip2_path: str, output_path: str) -> Optional[str]:
+    """Concatenate two clips with no transition (hard cut)."""
+    import tempfile as _tf
+    with _tf.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write(f"file '{clip1_path}'\n")
+        f.write(f"file '{clip2_path}'\n")
+        list_path = f.name
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", list_path,
+        "-c", "copy",
+        output_path,
+    ]
+    success = _run_ffmpeg(cmd)
+    try:
+        os.unlink(list_path)
+    except OSError:
+        pass
+
+    return output_path if success else None
+
+
+def apply_transitions_to_sequence(
+    segment_files: List[str],
+    output_path: str,
+    transition_type: str = "hard_cut",
+    transition_duration: float = 0.3,
+) -> Optional[str]:
+    """
+    Apply transitions between all segments in a sequence.
+
+    For "mixed" mode, randomly varies the transition type per cut.
+
+    Args:
+        segment_files: Ordered list of segment file paths.
+        output_path: Final output path.
+        transition_type: Transition name or "mixed" for variety.
+        transition_duration: Duration of each transition (seconds).
+
+    Returns:
+        output_path on success, None on failure.
+    """
+    import random as _random
+
+    if not segment_files:
+        return None
+
+    if len(segment_files) == 1:
+        import shutil
+        shutil.copy2(segment_files[0], output_path)
+        return output_path
+
+    if transition_type == "hard_cut":
+        # No transitions needed — fast concat
+        return None  # Signal caller to use normal concat
+
+    # Effect pool for "mixed" mode (exclude hard_cut)
+    effect_pool = [t for t in TRANSITION_TYPES if t != "hard_cut"]
+
+    # Iteratively merge: (a + b) → merged, then (merged + c) → merged, ...
+    with tempfile.TemporaryDirectory(prefix="tubee_trans_") as tmp_dir:
+        current = segment_files[0]
+
+        for i in range(1, len(segment_files)):
+            next_clip = segment_files[i]
+            merged = os.path.join(tmp_dir, f"merged_{i:04d}.mp4")
+
+            # Pick transition type
+            if transition_type == "mixed":
+                t_type = _random.choice(effect_pool)
+            else:
+                t_type = transition_type
+
+            result = apply_transition(
+                current, next_clip, merged,
+                transition_type=t_type,
+                duration=transition_duration,
+            )
+
+            if result:
+                current = result
+            else:
+                # Transition failed — fallback to hard cut for this pair
+                logger.warning(f"Transition failed between segment {i-1} and {i}, using hard cut")
+                fallback = os.path.join(tmp_dir, f"fallback_{i:04d}.mp4")
+                fb_result = _concat_two_clips(current, next_clip, fallback)
+                if fb_result:
+                    current = fb_result
+                else:
+                    logger.error(f"Hard cut fallback also failed at segment {i}")
+                    return None
+
+        # Copy final merged file to output
+        import shutil
+        shutil.copy2(current, output_path)
+
+    if os.path.exists(output_path):
+        logger.info(f"Transitions applied ({transition_type}) → {output_path}")
+        return output_path
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Module self-test
 # ---------------------------------------------------------------------------
 

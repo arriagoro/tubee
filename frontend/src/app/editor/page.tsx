@@ -18,6 +18,16 @@ const ASPECT_RATIOS = [
   { label: '16:9', icon: '🖥️', desc: 'YouTube' },
 ];
 
+const TRANSITIONS = [
+  { label: 'None', value: 'hard_cut' },
+  { label: 'Whip Pan', value: 'whip_pan' },
+  { label: 'Circle', value: 'circle_reveal' },
+  { label: 'Swipe', value: 'swipe' },
+  { label: 'Zoom Blur', value: 'zoom_blur' },
+  { label: 'Glitch', value: 'glitch' },
+  { label: 'Mixed', value: 'mixed' },
+];
+
 type Stage = 'idle' | 'uploading' | 'editing' | 'polling' | 'done' | 'error';
 
 export default function EditorPage() {
@@ -26,6 +36,7 @@ export default function EditorPage() {
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState('Cinematic');
   const [aspectRatio, setAspectRatio] = useState('9:16');
+  const [transition, setTransition] = useState('hard_cut');
   const [stage, setStage] = useState<Stage>('idle');
   const [progress, setProgress] = useState(0);
   const [statusMsg, setStatusMsg] = useState('');
@@ -102,7 +113,7 @@ export default function EditorPage() {
       const editRes = await fetch(`${API}/edit`, {
         method: 'POST',
         headers: { ...HEADERS, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_id: id, prompt, style, aspect_ratio: aspectRatio }),
+        body: JSON.stringify({ job_id: id, prompt, style, aspect_ratio: aspectRatio, transition_style: transition }),
       });
       if (!editRes.ok) throw new Error(`Edit request failed (${editRes.status})`);
 
@@ -125,6 +136,7 @@ export default function EditorPage() {
 
   const handleReset = () => {
     setVideoFiles([]); setMusicFile(null); setPrompt(''); setStyle('Cinematic');
+    setTransition('hard_cut');
     setStage('idle'); setProgress(0); setStatusMsg(''); setJobId(null); setError('');
     if (pollRef.current) clearInterval(pollRef.current);
   };
@@ -272,6 +284,34 @@ export default function EditorPage() {
               }}
             >
               {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Transitions ────────────────────────────────── */}
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>TRANSITIONS</p>
+        <div style={{
+          display: 'flex', gap: 8, overflowX: 'auto',
+          paddingBottom: 8, WebkitOverflowScrolling: 'touch',
+        }}>
+          {TRANSITIONS.map(t => (
+            <button
+              key={t.value}
+              onClick={() => setTransition(t.value)}
+              disabled={isWorking}
+              style={{
+                flexShrink: 0, padding: '10px 18px',
+                borderRadius: 99, border: 'none',
+                background: transition === t.value ? '#00AAFF' : '#0D1526',
+                color: transition === t.value ? '#fff' : '#8899BB',
+                fontSize: 14, fontWeight: transition === t.value ? 700 : 500,
+                cursor: isWorking ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {t.label}
             </button>
           ))}
         </div>

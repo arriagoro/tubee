@@ -91,6 +91,7 @@ class EditRequest(BaseModel):
     target_duration: Optional[float] = None
     style: Optional[str] = None          # Style preset: cole_bennett, cinematic, vintage, clean, neon
     aspect_ratio: Optional[str] = None   # Aspect ratio: 9:16, 1:1, 4:5, 16:9, 4:3
+    transition_style: Optional[str] = None  # Transition: hard_cut, whip_pan, circle_reveal, swipe, zoom_blur, glitch, mixed, fade
 
 
 class GenerateRequest(BaseModel):
@@ -288,6 +289,19 @@ async def start_edit(
     }
     backend_style = style_map.get(request.style) if request.style else None
 
+    # Map frontend transition names to backend transition types
+    transition_map = {
+        "none": "hard_cut", "None": "hard_cut", "hard_cut": "hard_cut",
+        "whip_pan": "whip_pan", "Whip Pan": "whip_pan",
+        "circle_reveal": "circle_reveal", "Circle": "circle_reveal",
+        "swipe": "swipe", "Swipe": "swipe",
+        "zoom_blur": "zoom_blur", "Zoom Blur": "zoom_blur",
+        "glitch": "glitch", "Glitch": "glitch",
+        "mixed": "mixed", "Mixed": "mixed",
+        "fade": "fade", "Fade": "fade",
+    }
+    backend_transition = transition_map.get(request.transition_style) if request.transition_style else None
+
     # Run processing in background thread (CPU-bound work)
     background_tasks.add_task(
         _run_processing_task,
@@ -295,6 +309,7 @@ async def start_edit(
         target_duration=request.target_duration,
         style_preset=backend_style,
         aspect_ratio=request.aspect_ratio,
+        transition_style=backend_transition,
     )
 
     return {
@@ -522,7 +537,7 @@ async def upscale_video_endpoint(
 # Background processing
 # ---------------------------------------------------------------------------
 
-def _run_processing_task(job_id: str, target_duration: Optional[float] = None, style_preset: Optional[str] = None, aspect_ratio: Optional[str] = None) -> None:
+def _run_processing_task(job_id: str, target_duration: Optional[float] = None, style_preset: Optional[str] = None, aspect_ratio: Optional[str] = None, transition_style: Optional[str] = None) -> None:
     """
     Background thread that runs the full processing pipeline.
     Updates job status as it progresses.
@@ -553,6 +568,7 @@ def _run_processing_task(job_id: str, target_duration: Optional[float] = None, s
             progress_callback=progress_callback,
             style_preset=style_preset,
             aspect_ratio=aspect_ratio,
+            transition_style=transition_style,
         )
 
         # Success

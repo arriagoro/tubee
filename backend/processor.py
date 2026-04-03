@@ -24,7 +24,7 @@ from pathlib import Path
 from scene_detect import detect_scenes
 from beat_sync import detect_beats
 from ai_editor import get_edit_decisions
-from effects import apply_style_preset
+from effects import apply_style_preset, apply_transitions_to_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +68,13 @@ def is_audio_file(path: str) -> bool:
     return Path(path).suffix.lower() in AUDIO_EXTENSIONS
 
 
+# Valid transition styles
+TRANSITION_STYLES = {
+    "hard_cut", "whip_pan", "circle_reveal", "swipe",
+    "zoom_blur", "glitch", "mixed", "fade",
+}
+
+
 def process_job(
     video_files: List[str],
     music_file: Optional[str],
@@ -77,6 +84,7 @@ def process_job(
     progress_callback: Optional[callable] = None,
     style_preset: Optional[str] = None,
     aspect_ratio: Optional[str] = None,
+    transition_style: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Main processing pipeline. Takes raw footage and returns a finished video.
@@ -90,6 +98,9 @@ def process_job(
         progress_callback: Optional callback(stage: str, pct: int) for progress updates.
         style_preset: Optional style preset to apply to the final video before audio mix.
                       Options: "cole_bennett", "cinematic", "vintage", "clean", "neon".
+        transition_style: Transition between clips. Options: "hard_cut" (default),
+                          "whip_pan", "circle_reveal", "swipe", "zoom_blur",
+                          "glitch", "mixed", "fade".
 
     Returns:
         Dict with:
@@ -205,9 +216,32 @@ def process_job(
 
         progress("Concatenating clips", 75)
 
-        # Build intermediate video (no audio yet)
+        # --- STEP 4b (optional): Apply transitions between segments ---
+        effective_transition = transition_style or "hard_cut"
+        # Normalise "swipe" → "swipe_left"
+        if effective_transition == "swipe":
+            effective_transition = "swipe_left"
+
         concat_video = os.path.join(tmp_dir, "concat.mp4")
-        _concat_segments(segment_files, concat_video)
+        trans_applied = False
+
+        if effective_transition != "hard_cut" and len(segment_files) >= 2:
+            progress(f"Applying '{effective_transition}' transitions", 72)
+            trans_result = apply_transitions_to_sequence(
+                segment_files,
+                concat_video,
+                transition_type=effective_transition,
+                transition_duration=0.3,
+            )
+            if trans_result:
+                trans_applied = True
+                logger.info(f"[{job_id}] Transitions applied: {effective_transition}")
+            else:
+                logger.warning(f"[{job_id}] Transitions returned None, falling back to hard cut concat")
+
+        if not trans_applied:
+            # Build intermediate video with plain concat (no transitions)
+            _concat_segments(segment_files, concat_video)
 
         # --- STEP 5 (optional): Apply style preset ---
         styled_video = concat_video
@@ -671,12 +705,13 @@ if __name__ == "__main__":
     )
 
     if len(sys.argv) < 3:
-        print("Usage: python processor.py <output.mp4> <video1> [video2 ...] [--music <music_file>] [--prompt 'your prompt'] [--style <preset>]")
+        print("Usage: python processor.py <output.mp4> <video1> [video2 ...] [--music <music_file>] [--prompt 'your prompt'] [--style <preset>] [--transition <type>]")
         print()
         print("Example:")
-        print("  python processor.py output.mp4 clip1.mp4 clip2.mp4 --music song.mp3 --prompt 'Fast-paced highlight reel' --style cole_bennett")
+        print("  python processor.py output.mp4 clip1.mp4 clip2.mp4 --music song.mp3 --prompt 'Fast-paced highlight reel' --style cole_bennett --transition whip_pan")
         print()
         print("Style presets: cole_bennett, cinematic, vintage, clean, neon")
+        print("Transitions:   hard_cut, whip_pan, circle_reveal, swipe, zoom_blur, glitch, mixed, fade")
         sys.exit(1)
 
     output = sys.argv[1]
@@ -684,6 +719,7 @@ if __name__ == "__main__":
     music = None
     prompt = "Create an engaging highlight video"
     style = None
+    transition = None
     i = 2
     while i < len(sys.argv):
         arg = sys.argv[i]
@@ -696,10 +732,13 @@ if __name__ == "__main__":
         elif arg == "--style" and i + 1 < len(sys.argv):
             style = sys.argv[i + 1]
             i += 2
+        elif arg == "--transition" and i + 1 < len(sys.argv):
+            transition = sys.argv[i + 1]
+            i += 2
         else:
             videos.append(arg)
             i += 1
 
     job_id = str(uuid.uuid4())[:8]
-    result = process_job(videos, music, prompt, output, job_id, style_preset=style)
+    result = process_job(videos, music, prompt, output, job_id, style_preset=style, transition_style=transition)
     print(json.dumps(result, indent=2))
