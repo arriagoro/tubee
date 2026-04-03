@@ -9,7 +9,7 @@ html {
 }
 
 body {
-  background: #0a0a0a;
+  background: #0A0F1E;
   color: #ffffff;
   font-family: 'Inter', system-ui, sans-serif;
 }
@@ -19,14 +19,14 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: #0A0F1E;
 }
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #1a2540;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #2a3a5a;
 }
 
 /* Drag and drop zone animations */
@@ -34,6 +34,6 @@ body {
   transition: all 0.2s ease;
 }
 .drop-zone.drag-over {
-  border-color: #C8F135;
-  background: rgba(200, 241, 53, 0.05);
+  border-color: #00AAFF;
+  background: rgba(0, 170, 255, 0.05);
 }

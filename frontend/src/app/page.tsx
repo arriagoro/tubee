@@ -72,7 +72,7 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       {/* Nav */}
-      <nav className="fixed top-0 w-full z-50 bg-dark/80 backdrop-blur-xl border-b border-white/5">
+      <nav className="fixed top-0 w-full z-50 bg-dark/80 backdrop-blur-xl border-b border-[rgba(0,170,255,0.15)]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <span className="text-xl font-bold tracking-tight">
             tubee<span className="text-accent">.</span>
@@ -82,14 +82,14 @@ export default function Home() {
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
             <Link
               href="/editor"
-              className="bg-accent text-dark font-semibold px-4 py-2 rounded-lg hover:brightness-110 transition-all"
+              className="bg-accent text-white font-semibold px-4 py-2 rounded-lg hover:shadow-[0_0_20px_rgba(0,170,255,0.3)] transition-all"
             >
               Start Editing
             </Link>
           </div>
           <Link
             href="/editor"
-            className="sm:hidden bg-accent text-dark font-semibold px-4 py-2 rounded-lg text-sm"
+            className="sm:hidden bg-accent text-white font-semibold px-4 py-2 rounded-lg text-sm"
           >
             Start Editing
           </Link>
@@ -99,7 +99,7 @@ export default function Home() {
       {/* Hero */}
       <section className="pt-40 pb-24 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-block mb-6 px-4 py-1.5 rounded-full border border-white/10 bg-card text-sm text-secondary">
+          <div className="inline-block mb-6 px-4 py-1.5 rounded-full border border-[rgba(0,170,255,0.15)] bg-card text-sm text-secondary">
             AI-powered editing • Now in beta
           </div>
           <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.05] mb-6">
@@ -114,13 +114,13 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/editor"
-              className="bg-accent text-dark font-bold text-lg px-8 py-4 rounded-2xl hover:brightness-110 hover:scale-[1.02] transition-all shadow-[0_0_40px_rgba(200,241,53,0.15)]"
+              className="bg-gradient-to-r from-[#00AAFF] to-[#00D4FF] text-white font-bold text-lg px-8 py-4 rounded-2xl hover:shadow-[0_0_40px_rgba(0,170,255,0.3)] hover:scale-[1.02] transition-all"
             >
               Start Editing Free →
             </Link>
             <a
               href="#pricing"
-              className="border border-white/10 text-white font-semibold text-lg px-8 py-4 rounded-2xl hover:bg-white/5 transition-all"
+              className="border border-[rgba(0,170,255,0.15)] text-white font-semibold text-lg px-8 py-4 rounded-2xl hover:bg-[rgba(0,170,255,0.05)] transition-all"
             >
               See Pricing ↓
             </a>
@@ -141,7 +141,7 @@ export default function Home() {
             {features.map((f) => (
               <div
                 key={f.title}
-                className="bg-card border border-white/5 rounded-2xl p-8 hover:border-accent/20 transition-colors"
+                className="bg-card border border-[rgba(0,170,255,0.15)] rounded-2xl p-8 hover:border-accent/30 hover:shadow-[0_0_20px_rgba(0,170,255,0.1)] transition-all"
               >
                 <div className="text-4xl mb-4">{f.icon}</div>
                 <h3 className="text-lg font-bold mb-2">{f.title}</h3>
@@ -153,7 +153,7 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section className="py-24 px-6 border-t border-white/5">
+      <section className="py-24 px-6 border-t border-[rgba(0,170,255,0.15)]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-center mb-16">
             Three steps. One reel.
@@ -175,7 +175,7 @@ export default function Home() {
       </section>
 
       {/* Social Proof / Testimonials */}
-      <section className="py-24 px-6 border-t border-white/5">
+      <section className="py-24 px-6 border-t border-[rgba(0,170,255,0.15)]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">
             Join videographers already using{' '}
@@ -188,7 +188,7 @@ export default function Home() {
             {testimonials.map((t) => (
               <div
                 key={t.name}
-                className="bg-card border border-white/5 rounded-2xl p-8 hover:border-accent/20 transition-colors relative"
+                className="bg-card border border-[rgba(0,170,255,0.15)] rounded-2xl p-8 hover:border-accent/30 hover:shadow-[0_0_20px_rgba(0,170,255,0.1)] transition-all relative"
               >
                 <div className="text-accent text-4xl font-serif leading-none mb-4">&ldquo;</div>
                 <p className="text-white/90 text-sm leading-relaxed mb-6">
@@ -205,7 +205,7 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 px-6 border-t border-white/5">
+      <section id="pricing" className="py-24 px-6 border-t border-[rgba(0,170,255,0.15)]">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-center mb-4">
             Simple pricing
@@ -219,12 +219,12 @@ export default function Home() {
                 key={p.name}
                 className={`rounded-2xl p-8 border transition-all ${
                   p.highlighted
-                    ? 'bg-accent/5 border-accent/30 ring-1 ring-accent/20 scale-[1.02] shadow-[0_0_60px_rgba(200,241,53,0.08)]'
-                    : 'bg-card border-white/5 hover:border-white/10'
+                    ? 'bg-[rgba(0,170,255,0.05)] border-accent/30 ring-1 ring-accent/20 scale-[1.02] shadow-[0_0_60px_rgba(0,170,255,0.08)]'
+                    : 'bg-card border-[rgba(0,170,255,0.15)] hover:border-accent/30'
                 }`}
               >
                 {p.highlighted && (
-                  <div className="inline-block bg-accent text-dark text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-4">
+                  <div className="inline-block bg-accent text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-4">
                     Most Popular
                   </div>
                 )}
@@ -246,8 +246,8 @@ export default function Home() {
                   rel="noopener noreferrer"
                   className={`block text-center font-semibold py-3 rounded-xl transition-all ${
                     p.highlighted
-                      ? 'bg-accent text-dark hover:brightness-110'
-                      : 'border border-white/10 text-white hover:bg-white/5'
+                      ? 'bg-accent text-white hover:shadow-[0_0_20px_rgba(0,170,255,0.3)]'
+                      : 'border border-[rgba(0,170,255,0.15)] text-white hover:bg-[rgba(0,170,255,0.05)]'
                   }`}
                 >
                   {p.cta}
@@ -259,7 +259,7 @@ export default function Home() {
       </section>
 
       {/* Built for itsthatseason */}
-      <section className="py-16 px-6 border-t border-white/5">
+      <section className="py-16 px-6 border-t border-[rgba(0,170,255,0.15)]">
         <div className="max-w-5xl mx-auto text-center">
           <p className="text-secondary text-sm">
             Part of the{' '}
@@ -277,7 +277,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-white/5">
+      <footer className="py-12 px-6 border-t border-[rgba(0,170,255,0.15)]">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="text-xl font-bold tracking-tight">
             tubee<span className="text-accent">.</span>

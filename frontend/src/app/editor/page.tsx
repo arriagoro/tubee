@@ -41,7 +41,6 @@ export default function EditorPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  // ── File Selection ──────────────────────────────────────────────
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) setVideoFiles(files);
@@ -52,7 +51,6 @@ export default function EditorPage() {
     if (files.length > 0) setMusicFile(files[0]);
   };
 
-  // ── Poll for status ─────────────────────────────────────────────
   const startPolling = (id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
@@ -77,7 +75,6 @@ export default function EditorPage() {
     }, 2000);
   };
 
-  // ── Submit ──────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (videoFiles.length === 0) { setError('Select at least one video'); return; }
     setError('');
@@ -86,7 +83,6 @@ export default function EditorPage() {
     setStatusMsg('Uploading files…');
 
     try {
-      // 1. Upload
       const form = new FormData();
       videoFiles.forEach(f => form.append('files', f));
       if (musicFile) form.append('files', musicFile);
@@ -101,7 +97,6 @@ export default function EditorPage() {
       const id = upData.job_id;
       setJobId(id);
 
-      // 2. Start edit
       setStage('editing');
       setStatusMsg('Starting edit…');
       const editRes = await fetch(`${API}/edit`, {
@@ -111,7 +106,6 @@ export default function EditorPage() {
       });
       if (!editRes.ok) throw new Error(`Edit request failed (${editRes.status})`);
 
-      // 3. Poll
       setStage('polling');
       setStatusMsg('Processing…');
       startPolling(id);
@@ -121,7 +115,6 @@ export default function EditorPage() {
     }
   };
 
-  // ── Download ────────────────────────────────────────────────────
   const handleDownload = () => {
     if (!jobId) return;
     const a = document.createElement('a');
@@ -130,7 +123,6 @@ export default function EditorPage() {
     a.click();
   };
 
-  // ── Reset ───────────────────────────────────────────────────────
   const handleReset = () => {
     setVideoFiles([]); setMusicFile(null); setPrompt(''); setStyle('Cinematic');
     setStage('idle'); setProgress(0); setStatusMsg(''); setJobId(null); setError('');
@@ -141,39 +133,39 @@ export default function EditorPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0a0a0a', color: '#fff',
+      minHeight: '100vh', background: '#0A0F1E', color: '#fff',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px', paddingBottom: '120px',
     }}>
       {/* Navigation */}
       <nav style={{
         display: 'flex', gap: 0, marginBottom: 32, borderRadius: 14,
-        overflow: 'hidden', border: '1px solid #222',
+        overflow: 'hidden', border: '1px solid rgba(0,170,255,0.15)',
       }}>
         <div style={{
           flex: 1, padding: '14px 0', textAlign: 'center',
-          background: '#C8F135', color: '#000', fontWeight: 700, fontSize: 15,
-          borderRight: '1px solid #222',
+          background: '#00AAFF', color: '#fff', fontWeight: 700, fontSize: 15,
+          borderRight: '1px solid rgba(0,170,255,0.15)',
         }}>
           ✂️ Edit
         </div>
         <Link href="/generate" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-          background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
-          borderRight: '1px solid #222',
+          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
+          borderRight: '1px solid rgba(0,170,255,0.15)',
         }}>
           ✨ Generate
         </Link>
         <Link href="/captions" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-          background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
-          borderRight: '1px solid #222',
+          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
+          borderRight: '1px solid rgba(0,170,255,0.15)',
         }}>
           💬 Captions
         </Link>
         <Link href="/upscale" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-          background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
+          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
         }}>
           🔍 Upscale
         </Link>
@@ -181,10 +173,10 @@ export default function EditorPage() {
 
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#C8F135' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#00AAFF' }}>
           ✂️ Tubee Editor
         </h1>
-        <p style={{ color: '#888', fontSize: 14, marginTop: 4 }}>AI-powered video editing</p>
+        <p style={{ color: '#8899BB', fontSize: 14, marginTop: 4 }}>AI-powered video editing</p>
       </div>
 
       {/* ── Video Select ─────────────────────────────────── */}
@@ -201,8 +193,8 @@ export default function EditorPage() {
         disabled={isWorking}
         style={{
           width: '100%', padding: '20px', marginBottom: 12,
-          background: videoFiles.length > 0 ? '#1a2e05' : '#1a1a1a',
-          border: videoFiles.length > 0 ? '2px solid #C8F135' : '2px dashed #444',
+          background: videoFiles.length > 0 ? 'rgba(0,170,255,0.1)' : '#0D1526',
+          border: videoFiles.length > 0 ? '2px solid #00AAFF' : '2px dashed rgba(0,170,255,0.3)',
           borderRadius: 16, color: '#fff', fontSize: 18, fontWeight: 600,
           cursor: isWorking ? 'not-allowed' : 'pointer',
           transition: 'all 0.2s',
@@ -211,7 +203,7 @@ export default function EditorPage() {
         {videoFiles.length === 0 ? (
           <>📹 Select Videos</>
         ) : (
-          <span style={{ color: '#C8F135' }}>
+          <span style={{ color: '#00AAFF' }}>
             ✅ {videoFiles.length} video{videoFiles.length > 1 ? 's' : ''} ready
           </span>
         )}
@@ -230,9 +222,9 @@ export default function EditorPage() {
         disabled={isWorking}
         style={{
           width: '100%', padding: '16px', marginBottom: 20,
-          background: musicFile ? '#1a2e05' : '#1a1a1a',
-          border: musicFile ? '2px solid #C8F135' : '2px dashed #333',
-          borderRadius: 16, color: musicFile ? '#C8F135' : '#888',
+          background: musicFile ? 'rgba(0,170,255,0.1)' : '#0D1526',
+          border: musicFile ? '2px solid #00AAFF' : '2px dashed rgba(0,170,255,0.15)',
+          borderRadius: 16, color: musicFile ? '#00AAFF' : '#8899BB',
           fontSize: 16, fontWeight: 500,
           cursor: isWorking ? 'not-allowed' : 'pointer',
           transition: 'all 0.2s',
@@ -250,7 +242,7 @@ export default function EditorPage() {
         rows={3}
         style={{
           width: '100%', padding: 16, marginBottom: 16,
-          background: '#1a1a1a', border: '1px solid #333', borderRadius: 12,
+          background: '#0D1526', border: '1px solid rgba(0,170,255,0.15)', borderRadius: 12,
           color: '#fff', fontSize: 16, resize: 'vertical',
           outline: 'none', boxSizing: 'border-box',
           fontFamily: 'inherit',
@@ -259,7 +251,7 @@ export default function EditorPage() {
 
       {/* ── Style Pills ──────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
-        <p style={{ color: '#888', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>STYLE</p>
+        <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>STYLE</p>
         <div style={{
           display: 'flex', gap: 8, overflowX: 'auto',
           paddingBottom: 8, WebkitOverflowScrolling: 'touch',
@@ -272,8 +264,8 @@ export default function EditorPage() {
               style={{
                 flexShrink: 0, padding: '10px 18px',
                 borderRadius: 99, border: 'none',
-                background: style === s ? '#C8F135' : '#222',
-                color: style === s ? '#000' : '#aaa',
+                background: style === s ? '#00AAFF' : '#0D1526',
+                color: style === s ? '#fff' : '#8899BB',
                 fontSize: 14, fontWeight: style === s ? 700 : 500,
                 cursor: isWorking ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
@@ -287,7 +279,7 @@ export default function EditorPage() {
 
       {/* ── Aspect Ratio ────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
-        <p style={{ color: '#888', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>FORMAT</p>
+        <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>FORMAT</p>
         <div style={{
           display: 'flex', gap: 8, overflowX: 'auto',
           paddingBottom: 8, WebkitOverflowScrolling: 'touch',
@@ -300,8 +292,8 @@ export default function EditorPage() {
               style={{
                 flexShrink: 0, padding: '10px 16px',
                 borderRadius: 99, border: 'none',
-                background: aspectRatio === ar.label ? '#C8F135' : '#222',
-                color: aspectRatio === ar.label ? '#000' : '#aaa',
+                background: aspectRatio === ar.label ? '#00AAFF' : '#0D1526',
+                color: aspectRatio === ar.label ? '#fff' : '#8899BB',
                 fontSize: 13, fontWeight: aspectRatio === ar.label ? 700 : 500,
                 cursor: isWorking ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
@@ -330,16 +322,17 @@ export default function EditorPage() {
             display: 'flex', justifyContent: 'space-between',
             marginBottom: 8, fontSize: 14,
           }}>
-            <span style={{ color: '#C8F135' }}>{statusMsg}</span>
-            <span style={{ color: '#888' }}>{progress}%</span>
+            <span style={{ color: '#00AAFF' }}>{statusMsg}</span>
+            <span style={{ color: '#8899BB' }}>{progress}%</span>
           </div>
           <div style={{
-            width: '100%', height: 8, background: '#222', borderRadius: 99,
+            width: '100%', height: 8, background: '#0D1526', borderRadius: 99,
             overflow: 'hidden',
           }}>
             <div style={{
               width: `${Math.max(progress, 3)}%`, height: '100%',
-              background: '#C8F135', borderRadius: 99,
+              background: 'linear-gradient(90deg, #00AAFF, #00D4FF)',
+              borderRadius: 99,
               transition: 'width 0.5s ease',
             }} />
           </div>
@@ -349,16 +342,18 @@ export default function EditorPage() {
       {/* ── Done ─────────────────────────────────────────── */}
       {stage === 'done' && (
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <p style={{ fontSize: 20, color: '#C8F135', fontWeight: 700, marginBottom: 16 }}>
+          <p style={{ fontSize: 20, color: '#00AAFF', fontWeight: 700, marginBottom: 16 }}>
             🎉 Your edit is ready!
           </p>
           <button
             onClick={handleDownload}
             style={{
-              width: '100%', padding: 18, background: '#C8F135',
-              color: '#000', border: 'none', borderRadius: 14,
+              width: '100%', padding: 18,
+              background: 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+              color: '#fff', border: 'none', borderRadius: 14,
               fontSize: 18, fontWeight: 700, cursor: 'pointer',
               marginBottom: 12,
+              boxShadow: '0 0 20px rgba(0,170,255,0.3)',
             }}
           >
             ⬇️ Download Video
@@ -367,7 +362,7 @@ export default function EditorPage() {
             onClick={handleReset}
             style={{
               width: '100%', padding: 14, background: 'transparent',
-              color: '#888', border: '1px solid #333', borderRadius: 14,
+              color: '#8899BB', border: '1px solid rgba(0,170,255,0.15)', borderRadius: 14,
               fontSize: 15, cursor: 'pointer',
             }}
           >
@@ -383,12 +378,13 @@ export default function EditorPage() {
           disabled={isWorking || videoFiles.length === 0}
           style={{
             width: '100%', padding: 20,
-            background: isWorking || videoFiles.length === 0 ? '#333' : '#C8F135',
-            color: isWorking || videoFiles.length === 0 ? '#666' : '#000',
+            background: isWorking || videoFiles.length === 0 ? '#1a2540' : 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+            color: isWorking || videoFiles.length === 0 ? '#4a5a7a' : '#fff',
             border: 'none', borderRadius: 14,
             fontSize: 20, fontWeight: 700,
             cursor: isWorking || videoFiles.length === 0 ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s',
+            boxShadow: !isWorking && videoFiles.length > 0 ? '0 0 20px rgba(0,170,255,0.3)' : 'none',
           }}
         >
           {isWorking ? '⏳ Working…' : '✂️ Create Edit'}

@@ -10,30 +10,30 @@ const CAPTION_STYLES = [
   {
     id: 'temitayo',
     label: 'Temitayo',
-    icon: '🟢',
-    desc: 'Bold lime green, ALL CAPS',
-    preview: { color: '#C8F135', bg: '#1a1a1a', fontWeight: 800, textTransform: 'uppercase' as const },
+    icon: '🔵',
+    desc: 'Bold electric blue, ALL CAPS',
+    preview: { color: '#00AAFF', bg: '#0D1526', fontWeight: 800, textTransform: 'uppercase' as const },
   },
   {
     id: 'standard',
     label: 'Standard',
     icon: '⬜',
     desc: 'White text, black outline',
-    preview: { color: '#ffffff', bg: '#1a1a1a', fontWeight: 600, textTransform: 'none' as const },
+    preview: { color: '#ffffff', bg: '#0D1526', fontWeight: 600, textTransform: 'none' as const },
   },
   {
     id: 'minimal',
     label: 'Minimal',
     icon: '✨',
     desc: 'Small, clean, subtle',
-    preview: { color: 'rgba(255,255,255,0.8)', bg: '#1a1a1a', fontWeight: 400, textTransform: 'none' as const },
+    preview: { color: 'rgba(255,255,255,0.8)', bg: '#0D1526', fontWeight: 400, textTransform: 'none' as const },
   },
   {
     id: 'bold',
     label: 'Bold',
     icon: '💪',
     desc: 'Large, heavy stroke',
-    preview: { color: '#ffffff', bg: '#1a1a1a', fontWeight: 900, textTransform: 'none' as const },
+    preview: { color: '#ffffff', bg: '#0D1526', fontWeight: 900, textTransform: 'none' as const },
   },
 ];
 
@@ -100,7 +100,6 @@ export default function CaptionsPage() {
     } catch { /* silent */ }
   };
 
-  // ── Caption polling ─────────────────────────────────────────────
   const startPolling = (id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
@@ -123,7 +122,6 @@ export default function CaptionsPage() {
     }, 3000);
   };
 
-  // ── Handle caption from existing job ────────────────────────────
   const handleCaptionFromJob = async () => {
     if (!selectedJob) { setError('Select a completed video'); return; }
     setError('');
@@ -153,7 +151,6 @@ export default function CaptionsPage() {
     }
   };
 
-  // ── Handle caption from upload ──────────────────────────────────
   const handleCaptionFromUpload = async () => {
     if (!uploadFile) { setError('Select a video file to upload'); return; }
     setError('');
@@ -184,7 +181,6 @@ export default function CaptionsPage() {
     }
   };
 
-  // ── Voiceover ───────────────────────────────────────────────────
   const startVoPolling = (id: string) => {
     if (voPollRef.current) clearInterval(voPollRef.current);
     voPollRef.current = setInterval(async () => {
@@ -258,7 +254,7 @@ export default function CaptionsPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0a0a0a', color: '#fff',
+      minHeight: '100vh', background: '#0A0F1E', color: '#fff',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     }}>
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '24px 16px 80px' }}>
@@ -266,32 +262,32 @@ export default function CaptionsPage() {
         {/* Navigation */}
         <nav style={{
           display: 'flex', gap: 0, marginBottom: 32, borderRadius: 14,
-          overflow: 'hidden', border: '1px solid #222',
+          overflow: 'hidden', border: '1px solid rgba(0,170,255,0.15)',
         }}>
           <Link href="/editor" style={{
             flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-            background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
-            borderRight: '1px solid #222',
+            background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
+            borderRight: '1px solid rgba(0,170,255,0.15)',
           }}>
             ✂️ Edit
           </Link>
           <Link href="/generate" style={{
             flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-            background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
-            borderRight: '1px solid #222',
+            background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
+            borderRight: '1px solid rgba(0,170,255,0.15)',
           }}>
             ✨ Generate
           </Link>
           <div style={{
             flex: 1, padding: '14px 0', textAlign: 'center',
-            background: '#C8F135', color: '#000', fontWeight: 700, fontSize: 15,
-            borderRight: '1px solid #222',
+            background: '#00AAFF', color: '#fff', fontWeight: 700, fontSize: 15,
+            borderRight: '1px solid rgba(0,170,255,0.15)',
           }}>
             💬 Captions
           </div>
           <Link href="/upscale" style={{
             flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-            background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
+            background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
           }}>
             🔍 Upscale
           </Link>
@@ -299,10 +295,10 @@ export default function CaptionsPage() {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#C8F135' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#00AAFF' }}>
             💬 Auto-Captions
           </h1>
-          <p style={{ color: '#888', fontSize: 14, marginTop: 6 }}>
+          <p style={{ color: '#8899BB', fontSize: 14, marginTop: 6 }}>
             Transcribe & burn captions into your video — powered by Whisper + FFmpeg
           </p>
         </div>
@@ -312,10 +308,10 @@ export default function CaptionsPage() {
           <>
             {/* Source selection */}
             <div style={{
-              background: '#141414', borderRadius: 16, padding: 20,
-              border: '1px solid #222', marginBottom: 16,
+              background: '#0D1526', borderRadius: 16, padding: 20,
+              border: '1px solid rgba(0,170,255,0.15)', marginBottom: 16,
             }}>
-              <h3 style={{ margin: '0 0 12px', fontSize: 15, color: '#aaa' }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: 15, color: '#8899BB' }}>
                 📹 Select Video
               </h3>
 
@@ -334,9 +330,9 @@ export default function CaptionsPage() {
                 onClick={() => fileInputRef.current?.click()}
                 style={{
                   width: '100%', padding: '14px', borderRadius: 12,
-                  border: uploadFile ? '2px solid #C8F135' : '2px dashed #333',
-                  background: uploadFile ? '#C8F13510' : '#0a0a0a',
-                  color: uploadFile ? '#C8F135' : '#666',
+                  border: uploadFile ? '2px solid #00AAFF' : '2px dashed rgba(0,170,255,0.3)',
+                  background: uploadFile ? 'rgba(0,170,255,0.1)' : '#0A0F1E',
+                  color: uploadFile ? '#00AAFF' : '#4a5a7a',
                   fontSize: 14, cursor: 'pointer', marginBottom: 12,
                 }}
               >
@@ -345,7 +341,7 @@ export default function CaptionsPage() {
 
               {/* OR divider */}
               <div style={{
-                textAlign: 'center', color: '#444', fontSize: 12,
+                textAlign: 'center', color: '#2a3a5a', fontSize: 12,
                 margin: '8px 0', fontWeight: 600,
               }}>
                 — OR select from completed jobs —
@@ -354,7 +350,7 @@ export default function CaptionsPage() {
               {/* Completed jobs */}
               <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                 {jobs.length === 0 ? (
-                  <p style={{ color: '#555', fontSize: 13, textAlign: 'center', padding: 12 }}>
+                  <p style={{ color: '#3a4a6a', fontSize: 13, textAlign: 'center', padding: 12 }}>
                     No completed videos yet
                   </p>
                 ) : (
@@ -364,9 +360,9 @@ export default function CaptionsPage() {
                       onClick={() => { setSelectedJob(j.job_id); setUploadFile(null); }}
                       style={{
                         width: '100%', padding: '10px 12px', borderRadius: 10,
-                        border: selectedJob === j.job_id ? '2px solid #C8F135' : '1px solid #222',
-                        background: selectedJob === j.job_id ? '#C8F13510' : '#0f0f0f',
-                        color: selectedJob === j.job_id ? '#C8F135' : '#aaa',
+                        border: selectedJob === j.job_id ? '2px solid #00AAFF' : '1px solid rgba(0,170,255,0.15)',
+                        background: selectedJob === j.job_id ? 'rgba(0,170,255,0.1)' : '#0A0F1E',
+                        color: selectedJob === j.job_id ? '#00AAFF' : '#8899BB',
                         fontSize: 13, cursor: 'pointer', marginBottom: 6,
                         textAlign: 'left', display: 'block',
                       }}
@@ -374,7 +370,7 @@ export default function CaptionsPage() {
                       <span style={{ fontWeight: 600 }}>
                         {j.prompt ? j.prompt.slice(0, 50) : j.job_id.slice(0, 8)}
                       </span>
-                      <span style={{ float: 'right', color: '#555', fontSize: 11 }}>
+                      <span style={{ float: 'right', color: '#3a4a6a', fontSize: 11 }}>
                         {new Date(j.created_at).toLocaleDateString()}
                       </span>
                     </button>
@@ -385,10 +381,10 @@ export default function CaptionsPage() {
 
             {/* Caption style selector */}
             <div style={{
-              background: '#141414', borderRadius: 16, padding: 20,
-              border: '1px solid #222', marginBottom: 16,
+              background: '#0D1526', borderRadius: 16, padding: 20,
+              border: '1px solid rgba(0,170,255,0.15)', marginBottom: 16,
             }}>
-              <h3 style={{ margin: '0 0 12px', fontSize: 15, color: '#aaa' }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: 15, color: '#8899BB' }}>
                 🎨 Caption Style
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -398,19 +394,19 @@ export default function CaptionsPage() {
                     onClick={() => setCaptionStyle(s.id)}
                     style={{
                       padding: '14px 12px', borderRadius: 12, cursor: 'pointer',
-                      border: captionStyle === s.id ? '2px solid #C8F135' : '1px solid #222',
-                      background: captionStyle === s.id ? '#C8F13510' : '#0f0f0f',
+                      border: captionStyle === s.id ? '2px solid #00AAFF' : '1px solid rgba(0,170,255,0.15)',
+                      background: captionStyle === s.id ? 'rgba(0,170,255,0.1)' : '#0A0F1E',
                       textAlign: 'center',
                     }}
                   >
                     <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
                     <div style={{
                       fontSize: 13, fontWeight: 700,
-                      color: captionStyle === s.id ? '#C8F135' : '#ccc',
+                      color: captionStyle === s.id ? '#00AAFF' : '#ccc',
                     }}>
                       {s.label}
                     </div>
-                    <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>{s.desc}</div>
+                    <div style={{ fontSize: 11, color: '#4a5a7a', marginTop: 2 }}>{s.desc}</div>
                     {/* Preview chip */}
                     <div style={{
                       marginTop: 8, padding: '4px 8px', borderRadius: 6,
@@ -419,7 +415,7 @@ export default function CaptionsPage() {
                       fontWeight: s.preview.fontWeight,
                       textTransform: s.preview.textTransform,
                       fontSize: 11,
-                      textShadow: s.id === 'temitayo' ? '1px 1px 3px rgba(0,0,0,0.9)' :
+                      textShadow: s.id === 'temitayo' ? '0 0 8px rgba(0,170,255,0.5)' :
                         s.id === 'bold' ? '0 0 4px rgba(0,0,0,1)' : 'none',
                     }}>
                       sample text
@@ -431,15 +427,15 @@ export default function CaptionsPage() {
 
             {/* Word-by-word toggle */}
             <div style={{
-              background: '#141414', borderRadius: 16, padding: 16,
-              border: '1px solid #222', marginBottom: 20,
+              background: '#0D1526', borderRadius: 16, padding: 16,
+              border: '1px solid rgba(0,170,255,0.15)', marginBottom: 20,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#ccc' }}>
                   🎤 Word-by-Word Mode
                 </div>
-                <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: '#4a5a7a', marginTop: 2 }}>
                   Karaoke-style — one word at a time (trending!)
                 </div>
               </div>
@@ -447,7 +443,7 @@ export default function CaptionsPage() {
                 onClick={() => setWordByWord(!wordByWord)}
                 style={{
                   width: 52, height: 28, borderRadius: 14, border: 'none',
-                  background: wordByWord ? '#C8F135' : '#333',
+                  background: wordByWord ? '#00AAFF' : '#1a2540',
                   cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
                 }}
               >
@@ -465,9 +461,10 @@ export default function CaptionsPage() {
               disabled={!uploadFile && !selectedJob}
               style={{
                 width: '100%', padding: 16, borderRadius: 14, border: 'none',
-                background: (uploadFile || selectedJob) ? '#C8F135' : '#333',
-                color: (uploadFile || selectedJob) ? '#000' : '#666',
+                background: (uploadFile || selectedJob) ? 'linear-gradient(135deg, #00AAFF, #00D4FF)' : '#1a2540',
+                color: (uploadFile || selectedJob) ? '#fff' : '#4a5a7a',
                 fontSize: 16, fontWeight: 700, cursor: (uploadFile || selectedJob) ? 'pointer' : 'not-allowed',
+                boxShadow: (uploadFile || selectedJob) ? '0 0 20px rgba(0,170,255,0.3)' : 'none',
               }}
             >
               💬 Add Captions
@@ -488,48 +485,50 @@ export default function CaptionsPage() {
         {/* Processing / Polling state */}
         {(stage === 'uploading' || stage === 'processing' || stage === 'polling') && (
           <div style={{
-            background: '#141414', borderRadius: 16, padding: 32,
-            border: '1px solid #222', textAlign: 'center',
+            background: '#0D1526', borderRadius: 16, padding: 32,
+            border: '1px solid rgba(0,170,255,0.15)', textAlign: 'center',
           }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>💬</div>
-            <h3 style={{ color: '#C8F135', margin: '0 0 8px' }}>
+            <h3 style={{ color: '#00AAFF', margin: '0 0 8px' }}>
               {stage === 'uploading' ? 'Uploading…' : 'Adding Captions…'}
             </h3>
-            <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>
+            <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 20 }}>
               {statusMsg || 'Processing your video…'}
             </p>
 
             {/* Progress bar */}
             <div style={{
-              height: 6, background: '#222', borderRadius: 3,
+              height: 6, background: '#0A0F1E', borderRadius: 3,
               overflow: 'hidden', marginBottom: 8,
             }}>
               <div style={{
-                height: '100%', background: '#C8F135', borderRadius: 3,
+                height: '100%', background: 'linear-gradient(90deg, #00AAFF, #00D4FF)', borderRadius: 3,
                 width: `${progress}%`, transition: 'width 0.5s ease',
               }} />
             </div>
-            <p style={{ color: '#555', fontSize: 12 }}>{progress}%</p>
+            <p style={{ color: '#3a4a6a', fontSize: 12 }}>{progress}%</p>
           </div>
         )}
 
         {/* Done state */}
         {stage === 'done' && captionJobId && (
           <div style={{
-            background: '#141414', borderRadius: 16, padding: 32,
-            border: '1px solid #C8F135', textAlign: 'center',
+            background: '#0D1526', borderRadius: 16, padding: 32,
+            border: '1px solid #00AAFF', textAlign: 'center',
+            boxShadow: '0 0 20px rgba(0,170,255,0.15)',
           }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-            <h3 style={{ color: '#C8F135', margin: '0 0 8px' }}>Captions Added!</h3>
-            <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>
+            <h3 style={{ color: '#00AAFF', margin: '0 0 8px' }}>Captions Added!</h3>
+            <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 20 }}>
               Your captioned video is ready to download.
             </p>
             <a
               href={`${API}/download/${captionJobId}`}
               style={{
                 display: 'inline-block', padding: '14px 32px', borderRadius: 12,
-                background: '#C8F135', color: '#000', fontWeight: 700,
+                background: 'linear-gradient(135deg, #00AAFF, #00D4FF)', color: '#fff', fontWeight: 700,
                 fontSize: 15, textDecoration: 'none',
+                boxShadow: '0 0 20px rgba(0,170,255,0.3)',
               }}
             >
               ⬇️ Download Video
@@ -538,8 +537,8 @@ export default function CaptionsPage() {
               onClick={resetCaptions}
               style={{
                 display: 'block', width: '100%', marginTop: 16, padding: 12,
-                borderRadius: 12, border: '1px solid #333', background: 'transparent',
-                color: '#888', fontSize: 14, cursor: 'pointer',
+                borderRadius: 12, border: '1px solid rgba(0,170,255,0.15)', background: 'transparent',
+                color: '#8899BB', fontSize: 14, cursor: 'pointer',
               }}
             >
               ← Caption Another Video
@@ -555,12 +554,12 @@ export default function CaptionsPage() {
           }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
             <h3 style={{ color: '#ff6666', margin: '0 0 8px' }}>Caption Failed</h3>
-            <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>{error}</p>
+            <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 20 }}>{error}</p>
             <button
               onClick={resetCaptions}
               style={{
-                padding: '12px 32px', borderRadius: 12, border: '1px solid #333',
-                background: 'transparent', color: '#888', fontSize: 14, cursor: 'pointer',
+                padding: '12px 32px', borderRadius: 12, border: '1px solid rgba(0,170,255,0.15)',
+                background: 'transparent', color: '#8899BB', fontSize: 14, cursor: 'pointer',
               }}
             >
               ← Try Again
@@ -571,10 +570,10 @@ export default function CaptionsPage() {
         {/* ─── VOICEOVER SECTION ────────────────────────────── */}
         <div style={{ marginTop: 40 }}>
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
-            <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#C8F135' }}>
+            <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#00AAFF' }}>
               🎙️ Voiceover
             </h2>
-            <p style={{ color: '#888', fontSize: 13, marginTop: 4 }}>
+            <p style={{ color: '#8899BB', fontSize: 13, marginTop: 4 }}>
               Generate AI voiceover with ElevenLabs
             </p>
           </div>
@@ -583,10 +582,10 @@ export default function CaptionsPage() {
             <>
               {/* Script input */}
               <div style={{
-                background: '#141414', borderRadius: 16, padding: 20,
-                border: '1px solid #222', marginBottom: 16,
+                background: '#0D1526', borderRadius: 16, padding: 20,
+                border: '1px solid rgba(0,170,255,0.15)', marginBottom: 16,
               }}>
-                <h3 style={{ margin: '0 0 10px', fontSize: 14, color: '#aaa' }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: 14, color: '#8899BB' }}>
                   📝 Script
                 </h3>
                 <textarea
@@ -595,7 +594,7 @@ export default function CaptionsPage() {
                   placeholder="Type your script here..."
                   style={{
                     width: '100%', minHeight: 100, padding: 12, borderRadius: 10,
-                    border: '1px solid #333', background: '#0a0a0a', color: '#fff',
+                    border: '1px solid rgba(0,170,255,0.15)', background: '#0A0F1E', color: '#fff',
                     fontSize: 14, resize: 'vertical', fontFamily: 'inherit',
                   }}
                 />
@@ -603,10 +602,10 @@ export default function CaptionsPage() {
 
               {/* Voice selector */}
               <div style={{
-                background: '#141414', borderRadius: 16, padding: 20,
-                border: '1px solid #222', marginBottom: 16,
+                background: '#0D1526', borderRadius: 16, padding: 20,
+                border: '1px solid rgba(0,170,255,0.15)', marginBottom: 16,
               }}>
-                <h3 style={{ margin: '0 0 10px', fontSize: 14, color: '#aaa' }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: 14, color: '#8899BB' }}>
                   🗣️ Voice
                 </h3>
                 <select
@@ -614,7 +613,7 @@ export default function CaptionsPage() {
                   onChange={(e) => setVoVoiceId(e.target.value)}
                   style={{
                     width: '100%', padding: 12, borderRadius: 10,
-                    border: '1px solid #333', background: '#0a0a0a', color: '#fff',
+                    border: '1px solid rgba(0,170,255,0.15)', background: '#0A0F1E', color: '#fff',
                     fontSize: 14,
                   }}
                 >
@@ -629,10 +628,10 @@ export default function CaptionsPage() {
 
               {/* Attach to video */}
               <div style={{
-                background: '#141414', borderRadius: 16, padding: 20,
-                border: '1px solid #222', marginBottom: 16,
+                background: '#0D1526', borderRadius: 16, padding: 20,
+                border: '1px solid rgba(0,170,255,0.15)', marginBottom: 16,
               }}>
-                <h3 style={{ margin: '0 0 10px', fontSize: 14, color: '#aaa' }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: 14, color: '#8899BB' }}>
                   🎬 Attach to Video (optional)
                 </h3>
                 <select
@@ -640,7 +639,7 @@ export default function CaptionsPage() {
                   onChange={(e) => setVoAttachJob(e.target.value || null)}
                   style={{
                     width: '100%', padding: 12, borderRadius: 10,
-                    border: '1px solid #333', background: '#0a0a0a', color: '#fff',
+                    border: '1px solid rgba(0,170,255,0.15)', background: '#0A0F1E', color: '#fff',
                     fontSize: 14,
                   }}
                 >
@@ -658,10 +657,11 @@ export default function CaptionsPage() {
                 disabled={!voText.trim()}
                 style={{
                   width: '100%', padding: 16, borderRadius: 14, border: 'none',
-                  background: voText.trim() ? '#C8F135' : '#333',
-                  color: voText.trim() ? '#000' : '#666',
+                  background: voText.trim() ? 'linear-gradient(135deg, #00AAFF, #00D4FF)' : '#1a2540',
+                  color: voText.trim() ? '#fff' : '#4a5a7a',
                   fontSize: 16, fontWeight: 700,
                   cursor: voText.trim() ? 'pointer' : 'not-allowed',
+                  boxShadow: voText.trim() ? '0 0 20px rgba(0,170,255,0.3)' : 'none',
                 }}
               >
                 🎙️ Generate Voiceover
@@ -681,40 +681,42 @@ export default function CaptionsPage() {
 
           {(voStage === 'generating' || voStage === 'polling') && (
             <div style={{
-              background: '#141414', borderRadius: 16, padding: 32,
-              border: '1px solid #222', textAlign: 'center',
+              background: '#0D1526', borderRadius: 16, padding: 32,
+              border: '1px solid rgba(0,170,255,0.15)', textAlign: 'center',
             }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>🎙️</div>
-              <h3 style={{ color: '#C8F135', margin: '0 0 8px' }}>Generating Voiceover…</h3>
-              <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>
+              <h3 style={{ color: '#00AAFF', margin: '0 0 8px' }}>Generating Voiceover…</h3>
+              <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 20 }}>
                 {voStatusMsg || 'Processing…'}
               </p>
               <div style={{
-                height: 6, background: '#222', borderRadius: 3,
+                height: 6, background: '#0A0F1E', borderRadius: 3,
                 overflow: 'hidden', marginBottom: 8,
               }}>
                 <div style={{
-                  height: '100%', background: '#C8F135', borderRadius: 3,
+                  height: '100%', background: 'linear-gradient(90deg, #00AAFF, #00D4FF)', borderRadius: 3,
                   width: `${voProgress}%`, transition: 'width 0.5s ease',
                 }} />
               </div>
-              <p style={{ color: '#555', fontSize: 12 }}>{voProgress}%</p>
+              <p style={{ color: '#3a4a6a', fontSize: 12 }}>{voProgress}%</p>
             </div>
           )}
 
           {voStage === 'done' && voJobId && (
             <div style={{
-              background: '#141414', borderRadius: 16, padding: 32,
-              border: '1px solid #C8F135', textAlign: 'center',
+              background: '#0D1526', borderRadius: 16, padding: 32,
+              border: '1px solid #00AAFF', textAlign: 'center',
+              boxShadow: '0 0 20px rgba(0,170,255,0.15)',
             }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-              <h3 style={{ color: '#C8F135', margin: '0 0 8px' }}>Voiceover Ready!</h3>
+              <h3 style={{ color: '#00AAFF', margin: '0 0 8px' }}>Voiceover Ready!</h3>
               <a
                 href={`${API}/download/${voJobId}`}
                 style={{
                   display: 'inline-block', padding: '14px 32px', borderRadius: 12,
-                  background: '#C8F135', color: '#000', fontWeight: 700,
+                  background: 'linear-gradient(135deg, #00AAFF, #00D4FF)', color: '#fff', fontWeight: 700,
                   fontSize: 15, textDecoration: 'none',
+                  boxShadow: '0 0 20px rgba(0,170,255,0.3)',
                 }}
               >
                 ⬇️ Download
@@ -723,8 +725,8 @@ export default function CaptionsPage() {
                 onClick={resetVoiceover}
                 style={{
                   display: 'block', width: '100%', marginTop: 16, padding: 12,
-                  borderRadius: 12, border: '1px solid #333', background: 'transparent',
-                  color: '#888', fontSize: 14, cursor: 'pointer',
+                  borderRadius: 12, border: '1px solid rgba(0,170,255,0.15)', background: 'transparent',
+                  color: '#8899BB', fontSize: 14, cursor: 'pointer',
                 }}
               >
                 ← New Voiceover
@@ -739,12 +741,12 @@ export default function CaptionsPage() {
             }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>❌</div>
               <h3 style={{ color: '#ff6666', margin: '0 0 8px' }}>Voiceover Failed</h3>
-              <p style={{ color: '#888', fontSize: 13, marginBottom: 20 }}>{voError}</p>
+              <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 20 }}>{voError}</p>
               <button
                 onClick={resetVoiceover}
                 style={{
-                  padding: '12px 32px', borderRadius: 12, border: '1px solid #333',
-                  background: 'transparent', color: '#888', fontSize: 14, cursor: 'pointer',
+                  padding: '12px 32px', borderRadius: 12, border: '1px solid rgba(0,170,255,0.15)',
+                  background: 'transparent', color: '#8899BB', fontSize: 14, cursor: 'pointer',
                 }}
               >
                 ← Try Again

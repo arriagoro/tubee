@@ -45,7 +45,6 @@ export default function GeneratePage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  // ── Poll for status ─────────────────────────────────────────────
   const startPolling = (id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
@@ -70,7 +69,6 @@ export default function GeneratePage() {
     }, 3000);
   };
 
-  // ── Submit ──────────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (!prompt.trim()) { setError('Enter a prompt describing the video'); return; }
     setError('');
@@ -101,7 +99,6 @@ export default function GeneratePage() {
     }
   };
 
-  // ── Download ────────────────────────────────────────────────────
   const handleDownload = () => {
     if (!jobId) return;
     const a = document.createElement('a');
@@ -110,7 +107,6 @@ export default function GeneratePage() {
     a.click();
   };
 
-  // ── Reset ───────────────────────────────────────────────────────
   const handleReset = () => {
     setPrompt(''); setDuration(4); setStyle('cinematic');
     setStage('idle'); setProgress(0); setStatusMsg('');
@@ -122,39 +118,39 @@ export default function GeneratePage() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0a0a0a', color: '#fff',
+      minHeight: '100vh', background: '#0A0F1E', color: '#fff',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px', paddingBottom: '120px',
     }}>
       {/* Navigation */}
       <nav style={{
         display: 'flex', gap: 0, marginBottom: 32, borderRadius: 14,
-        overflow: 'hidden', border: '1px solid #222',
+        overflow: 'hidden', border: '1px solid rgba(0,170,255,0.15)',
       }}>
         <Link href="/editor" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-          background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
-          borderRight: '1px solid #222',
+          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
+          borderRight: '1px solid rgba(0,170,255,0.15)',
         }}>
           ✂️ Edit
         </Link>
         <div style={{
           flex: 1, padding: '14px 0', textAlign: 'center',
-          background: '#C8F135', color: '#000', fontWeight: 700, fontSize: 15,
-          borderRight: '1px solid #222',
+          background: '#00AAFF', color: '#fff', fontWeight: 700, fontSize: 15,
+          borderRight: '1px solid rgba(0,170,255,0.15)',
         }}>
           ✨ Generate
         </div>
         <Link href="/captions" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-          background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
-          borderRight: '1px solid #222',
+          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
+          borderRight: '1px solid rgba(0,170,255,0.15)',
         }}>
           💬 Captions
         </Link>
         <Link href="/upscale" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-          background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
+          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
         }}>
           🔍 Upscale
         </Link>
@@ -162,10 +158,10 @@ export default function GeneratePage() {
 
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 28 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#C8F135' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#00AAFF' }}>
           ✨ AI Video Generator
         </h1>
-        <p style={{ color: '#888', fontSize: 14, marginTop: 4 }}>
+        <p style={{ color: '#8899BB', fontSize: 14, marginTop: 4 }}>
           Describe a video and let AI create it for you
         </p>
       </div>
@@ -179,7 +175,7 @@ export default function GeneratePage() {
         rows={4}
         style={{
           width: '100%', padding: 16, marginBottom: 20,
-          background: '#1a1a1a', border: '1px solid #333', borderRadius: 12,
+          background: '#0D1526', border: '1px solid rgba(0,170,255,0.15)', borderRadius: 12,
           color: '#fff', fontSize: 16, resize: 'vertical',
           outline: 'none', boxSizing: 'border-box',
           fontFamily: 'inherit', lineHeight: 1.5,
@@ -188,7 +184,7 @@ export default function GeneratePage() {
 
       {/* ── Duration ─────────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
-        <p style={{ color: '#888', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>DURATION</p>
+        <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>DURATION</p>
         <div style={{ display: 'flex', gap: 8 }}>
           {DURATIONS.map(d => (
             <button
@@ -197,8 +193,8 @@ export default function GeneratePage() {
               disabled={isWorking}
               style={{
                 flex: 1, padding: '12px 8px', borderRadius: 12, border: 'none',
-                background: duration === d.value ? '#C8F135' : '#1a1a1a',
-                color: duration === d.value ? '#000' : '#aaa',
+                background: duration === d.value ? '#00AAFF' : '#0D1526',
+                color: duration === d.value ? '#fff' : '#8899BB',
                 fontSize: 15, fontWeight: duration === d.value ? 700 : 500,
                 cursor: isWorking ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
@@ -213,7 +209,7 @@ export default function GeneratePage() {
 
       {/* ── Aspect Ratio ────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
-        <p style={{ color: '#888', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>FORMAT</p>
+        <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>FORMAT</p>
         <div style={{ display: 'flex', gap: 8 }}>
           {ASPECT_RATIOS.map(ar => (
             <button
@@ -222,8 +218,8 @@ export default function GeneratePage() {
               disabled={isWorking}
               style={{
                 flex: 1, padding: '12px 8px', borderRadius: 12, border: 'none',
-                background: aspectRatio === ar.label ? '#C8F135' : '#1a1a1a',
-                color: aspectRatio === ar.label ? '#000' : '#aaa',
+                background: aspectRatio === ar.label ? '#00AAFF' : '#0D1526',
+                color: aspectRatio === ar.label ? '#fff' : '#8899BB',
                 fontSize: 14, fontWeight: aspectRatio === ar.label ? 700 : 500,
                 cursor: isWorking ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
@@ -239,7 +235,7 @@ export default function GeneratePage() {
 
       {/* ── Style ────────────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
-        <p style={{ color: '#888', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>STYLE</p>
+        <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>STYLE</p>
         <div style={{
           display: 'flex', gap: 8, overflowX: 'auto',
           paddingBottom: 8, WebkitOverflowScrolling: 'touch',
@@ -252,8 +248,8 @@ export default function GeneratePage() {
               style={{
                 flexShrink: 0, padding: '10px 18px',
                 borderRadius: 99, border: 'none',
-                background: style === s.value ? '#C8F135' : '#1a1a1a',
-                color: style === s.value ? '#000' : '#aaa',
+                background: style === s.value ? '#00AAFF' : '#0D1526',
+                color: style === s.value ? '#fff' : '#8899BB',
                 fontSize: 14, fontWeight: style === s.value ? 700 : 500,
                 cursor: isWorking ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
@@ -283,20 +279,20 @@ export default function GeneratePage() {
             display: 'flex', justifyContent: 'space-between',
             marginBottom: 8, fontSize: 14,
           }}>
-            <span style={{ color: '#C8F135' }}>{statusMsg}</span>
-            <span style={{ color: '#888' }}>{progress}%</span>
+            <span style={{ color: '#00AAFF' }}>{statusMsg}</span>
+            <span style={{ color: '#8899BB' }}>{progress}%</span>
           </div>
           <div style={{
-            width: '100%', height: 8, background: '#222', borderRadius: 99,
+            width: '100%', height: 8, background: '#0D1526', borderRadius: 99,
             overflow: 'hidden',
           }}>
             <div style={{
               width: `${Math.max(progress, 3)}%`, height: '100%',
-              background: 'linear-gradient(90deg, #C8F135, #9BCC0A)',
+              background: 'linear-gradient(90deg, #00AAFF, #00D4FF)',
               borderRadius: 99, transition: 'width 0.5s ease',
             }} />
           </div>
-          <p style={{ color: '#666', fontSize: 12, marginTop: 8, textAlign: 'center' }}>
+          <p style={{ color: '#4a5a7a', fontSize: 12, marginTop: 8, textAlign: 'center' }}>
             AI generation can take 1-5 minutes depending on the provider
           </p>
         </div>
@@ -305,16 +301,18 @@ export default function GeneratePage() {
       {/* ── Done ─────────────────────────────────────────── */}
       {stage === 'done' && (
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <p style={{ fontSize: 20, color: '#C8F135', fontWeight: 700, marginBottom: 16 }}>
+          <p style={{ fontSize: 20, color: '#00AAFF', fontWeight: 700, marginBottom: 16 }}>
             🎉 Your video is ready!
           </p>
           <button
             onClick={handleDownload}
             style={{
-              width: '100%', padding: 18, background: '#C8F135',
-              color: '#000', border: 'none', borderRadius: 14,
+              width: '100%', padding: 18,
+              background: 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+              color: '#fff', border: 'none', borderRadius: 14,
               fontSize: 18, fontWeight: 700, cursor: 'pointer',
               marginBottom: 12,
+              boxShadow: '0 0 20px rgba(0,170,255,0.3)',
             }}
           >
             ⬇️ Download Video
@@ -323,7 +321,7 @@ export default function GeneratePage() {
             onClick={handleReset}
             style={{
               width: '100%', padding: 14, background: 'transparent',
-              color: '#888', border: '1px solid #333', borderRadius: 14,
+              color: '#8899BB', border: '1px solid rgba(0,170,255,0.15)', borderRadius: 14,
               fontSize: 15, cursor: 'pointer',
             }}
           >
@@ -339,13 +337,13 @@ export default function GeneratePage() {
           disabled={isWorking || !prompt.trim()}
           style={{
             width: '100%', padding: 20,
-            background: isWorking || !prompt.trim() ? '#333' : '#C8F135',
-            color: isWorking || !prompt.trim() ? '#666' : '#000',
+            background: isWorking || !prompt.trim() ? '#1a2540' : 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+            color: isWorking || !prompt.trim() ? '#4a5a7a' : '#fff',
             border: 'none', borderRadius: 14,
             fontSize: 20, fontWeight: 700,
             cursor: isWorking || !prompt.trim() ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s',
-            boxShadow: !isWorking && prompt.trim() ? '0 0 40px rgba(200,241,53,0.15)' : 'none',
+            boxShadow: !isWorking && prompt.trim() ? '0 0 20px rgba(0,170,255,0.3)' : 'none',
           }}
         >
           {isWorking ? '⏳ Generating…' : '✨ Generate Video'}

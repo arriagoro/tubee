@@ -120,39 +120,39 @@ export default function UpscalePage() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#0a0a0a', color: '#fff',
+      minHeight: '100vh', background: '#0A0F1E', color: '#fff',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px', paddingBottom: '120px',
     }}>
       {/* Navigation */}
       <nav style={{
         display: 'flex', gap: 0, marginBottom: 32, borderRadius: 14,
-        overflow: 'hidden', border: '1px solid #222',
+        overflow: 'hidden', border: '1px solid rgba(0,170,255,0.15)',
       }}>
         <Link href="/editor" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-          background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
-          borderRight: '1px solid #222',
+          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
+          borderRight: '1px solid rgba(0,170,255,0.15)',
         }}>
           ✂️ Edit
         </Link>
         <Link href="/generate" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-          background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
-          borderRight: '1px solid #222',
+          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
+          borderRight: '1px solid rgba(0,170,255,0.15)',
         }}>
           ✨ Generate
         </Link>
         <Link href="/captions" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-          background: '#1a1a1a', color: '#888', fontWeight: 600, fontSize: 15,
-          borderRight: '1px solid #222',
+          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
+          borderRight: '1px solid rgba(0,170,255,0.15)',
         }}>
           💬 Captions
         </Link>
         <div style={{
           flex: 1, padding: '14px 0', textAlign: 'center',
-          background: '#C8F135', color: '#000', fontWeight: 700, fontSize: 15,
+          background: '#00AAFF', color: '#fff', fontWeight: 700, fontSize: 15,
         }}>
           🔍 Upscale
         </div>
@@ -160,21 +160,21 @@ export default function UpscalePage() {
 
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 28 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#C8F135' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#00AAFF' }}>
           🔍 Video Upscaler
         </h1>
-        <p style={{ color: '#888', fontSize: 14, marginTop: 4 }}>
+        <p style={{ color: '#8899BB', fontSize: 14, marginTop: 4 }}>
           Upscale your videos to 4K with AI • No API key needed
         </p>
       </div>
 
       {/* ── Select Video ─────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
-        <p style={{ color: '#888', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>SELECT A COMPLETED VIDEO</p>
+        <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>SELECT A COMPLETED VIDEO</p>
         {jobs.length === 0 ? (
           <div style={{
-            padding: 20, background: '#1a1a1a', borderRadius: 12,
-            border: '1px dashed #333', textAlign: 'center', color: '#666',
+            padding: 20, background: '#0D1526', borderRadius: 12,
+            border: '1px dashed rgba(0,170,255,0.3)', textAlign: 'center', color: '#4a5a7a',
           }}>
             No completed videos found. Edit or generate a video first.
           </div>
@@ -187,8 +187,8 @@ export default function UpscalePage() {
                 disabled={isWorking}
                 style={{
                   padding: '14px 16px', borderRadius: 12, border: 'none',
-                  background: selectedJob === job.job_id ? '#1a2e05' : '#1a1a1a',
-                  outline: selectedJob === job.job_id ? '2px solid #C8F135' : '1px solid #333',
+                  background: selectedJob === job.job_id ? 'rgba(0,170,255,0.1)' : '#0D1526',
+                  outline: selectedJob === job.job_id ? '2px solid #00AAFF' : '1px solid rgba(0,170,255,0.15)',
                   color: '#fff', textAlign: 'left',
                   cursor: isWorking ? 'not-allowed' : 'pointer',
                   transition: 'all 0.15s',
@@ -197,7 +197,7 @@ export default function UpscalePage() {
                 <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
                   {job.prompt ? job.prompt.slice(0, 60) + (job.prompt.length > 60 ? '…' : '') : `Job ${job.job_id.slice(0, 8)}`}
                 </div>
-                <div style={{ fontSize: 12, color: '#666' }}>
+                <div style={{ fontSize: 12, color: '#4a5a7a' }}>
                   {new Date(job.created_at).toLocaleString()} • {job.job_id.slice(0, 8)}
                 </div>
               </button>
@@ -208,7 +208,7 @@ export default function UpscalePage() {
 
       {/* ── Scale ────────────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
-        <p style={{ color: '#888', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>UPSCALE FACTOR</p>
+        <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>UPSCALE FACTOR</p>
         <div style={{ display: 'flex', gap: 8 }}>
           {[
             { value: 2, label: '2×', desc: '1080p → 4K' },
@@ -220,8 +220,8 @@ export default function UpscalePage() {
               disabled={isWorking}
               style={{
                 flex: 1, padding: '14px 8px', borderRadius: 12, border: 'none',
-                background: scale === s.value ? '#C8F135' : '#1a1a1a',
-                color: scale === s.value ? '#000' : '#aaa',
+                background: scale === s.value ? '#00AAFF' : '#0D1526',
+                color: scale === s.value ? '#fff' : '#8899BB',
                 fontSize: 18, fontWeight: scale === s.value ? 700 : 500,
                 cursor: isWorking ? 'not-allowed' : 'pointer',
                 transition: 'all 0.15s',
@@ -251,16 +251,16 @@ export default function UpscalePage() {
             display: 'flex', justifyContent: 'space-between',
             marginBottom: 8, fontSize: 14,
           }}>
-            <span style={{ color: '#C8F135' }}>{statusMsg}</span>
-            <span style={{ color: '#888' }}>{progress}%</span>
+            <span style={{ color: '#00AAFF' }}>{statusMsg}</span>
+            <span style={{ color: '#8899BB' }}>{progress}%</span>
           </div>
           <div style={{
-            width: '100%', height: 8, background: '#222', borderRadius: 99,
+            width: '100%', height: 8, background: '#0D1526', borderRadius: 99,
             overflow: 'hidden',
           }}>
             <div style={{
               width: `${Math.max(progress, 3)}%`, height: '100%',
-              background: 'linear-gradient(90deg, #C8F135, #9BCC0A)',
+              background: 'linear-gradient(90deg, #00AAFF, #00D4FF)',
               borderRadius: 99, transition: 'width 0.5s ease',
             }} />
           </div>
@@ -270,16 +270,18 @@ export default function UpscalePage() {
       {/* ── Done ─────────────────────────────────────────── */}
       {stage === 'done' && (
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <p style={{ fontSize: 20, color: '#C8F135', fontWeight: 700, marginBottom: 16 }}>
+          <p style={{ fontSize: 20, color: '#00AAFF', fontWeight: 700, marginBottom: 16 }}>
             🎉 Upscaled video is ready!
           </p>
           <button
             onClick={handleDownload}
             style={{
-              width: '100%', padding: 18, background: '#C8F135',
-              color: '#000', border: 'none', borderRadius: 14,
+              width: '100%', padding: 18,
+              background: 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+              color: '#fff', border: 'none', borderRadius: 14,
               fontSize: 18, fontWeight: 700, cursor: 'pointer',
               marginBottom: 12,
+              boxShadow: '0 0 20px rgba(0,170,255,0.3)',
             }}
           >
             ⬇️ Download Upscaled Video
@@ -288,7 +290,7 @@ export default function UpscalePage() {
             onClick={handleReset}
             style={{
               width: '100%', padding: 14, background: 'transparent',
-              color: '#888', border: '1px solid #333', borderRadius: 14,
+              color: '#8899BB', border: '1px solid rgba(0,170,255,0.15)', borderRadius: 14,
               fontSize: 15, cursor: 'pointer',
             }}
           >
@@ -304,12 +306,13 @@ export default function UpscalePage() {
           disabled={isWorking || !selectedJob}
           style={{
             width: '100%', padding: 20,
-            background: isWorking || !selectedJob ? '#333' : '#C8F135',
-            color: isWorking || !selectedJob ? '#666' : '#000',
+            background: isWorking || !selectedJob ? '#1a2540' : 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+            color: isWorking || !selectedJob ? '#4a5a7a' : '#fff',
             border: 'none', borderRadius: 14,
             fontSize: 20, fontWeight: 700,
             cursor: isWorking || !selectedJob ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s',
+            boxShadow: !isWorking && selectedJob ? '0 0 20px rgba(0,170,255,0.3)' : 'none',
           }}
         >
           {isWorking ? '⏳ Upscaling…' : `🔍 Upscale ${scale}×`}
