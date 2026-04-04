@@ -344,8 +344,8 @@ def get_edit_decisions(
                     pass
 
     if not ANTHROPIC_API_KEY:
-        logger.warning("No API key found — using rule-based fallback editor")
-        return _rule_based_editor(scenes, beat_data, user_prompt, target_duration)
+        logger.info("No Anthropic key — trying local Ollama models")
+        return get_edit_decisions_local(scenes, beat_data, user_prompt, target_duration, video_files)
 
     try:
         import anthropic
@@ -396,8 +396,8 @@ def get_edit_decisions(
         return decisions
 
     except ImportError:
-        logger.warning("anthropic SDK not installed — using rule-based fallback")
-        return _rule_based_editor(scenes, beat_data, user_prompt, target_duration)
+        logger.info("anthropic SDK not installed — trying local Ollama")
+        return get_edit_decisions_local(scenes, beat_data, user_prompt, target_duration)
 
     except Exception as e:
         logger.error(f"Claude API call failed: {e}")
@@ -603,3 +603,47 @@ def get_edit_decisions_kimi(
     except Exception as e:
         logger.warning(f"Kimi edit failed: {e}, falling back to Claude")
         return get_edit_decisions(scenes, beat_data, user_prompt, target_duration, video_files)
+
+
+# ---------------------------------------------------------------------------
+# LOCAL OLLAMA FALLBACK — runs on Mac Mini, zero API cost, never offline
+# ---------------------------------------------------------------------------
+
+def get_edit_decisions_local(
+    scenes,
+    beat_data,
+    user_prompt,
+    target_duration=None,
+    video_files=None,
+) -> dict:
+    """
+    Use local Ollama models as fallback when cloud APIs are unavailable.
+    Tries: qwen2.5:7b → mistral:7b → llama3.2:1b → rule-based
+    """
+    import requests as _req
+
+    local_models = ["qwen2.5:7b", "mistral:7b", "llama3.2:1b"]
+    prompt = build_edit_prompt(scenes, beat_data, user_prompt, target_duration)
+
+    for model in local_models:
+        try:
+            resp = _req.post(
+                "http://localhost:11434/api/generate",
+                json={"model": model, "prompt": prompt, "stream": False, "options": {"temperature": 0.3}},
+                timeout=120
+            )
+            if resp.status_code == 200:
+                raw = resp.json().get("response", "")
+                import re as _re, json as _json
+                match = _re.search(r'\{.*\}', raw, _re.DOTALL)
+                if match:
+                    result = _json.loads(match.group())
+                    if result.get("clips"):
+                        logger.info(f"Local Ollama ({model}): {len(result['clips'])} clips")
+                        return result
+        except Exception as e:
+            logger.debug(f"Ollama {model} failed: {e}")
+            continue
+
+    logger.warning("All local models failed — using rule-based editor")
+    return _rule_based_editor(scenes, beat_data, user_prompt, target_duration)
