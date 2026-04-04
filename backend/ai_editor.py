@@ -7,7 +7,9 @@ intelligent editing decisions: which scenes to use, what order, what timing.
 import os
 import json
 import logging
+import re
 from typing import List, Dict, Any, Optional
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,71 @@ def smart_route_model(user_prompt: str, scene_count: int) -> str:
     
     logger.info(f"Smart routing → Haiku (standard edit)")
     return CLAUDE_MODEL_FAST
+
+
+def build_vision_edit_prompt(
+    scenes: List[Dict[str, Any]],
+    beat_data: Optional[Dict[str, Any]],
+    user_prompt: str,
+    target_duration: Optional[float] = None,
+    frame_map: Optional[Dict[str, List[str]]] = None,
+) -> str:
+    """
+    Build an edit prompt that includes visual context from extracted frames.
+    Same structure as build_edit_prompt but prepends frame descriptions so
+    Kimi knows WHAT it's looking at.
+
+    Args:
+        scenes: Scene list from scene_detect.
+        beat_data: Beat data (or None).
+        user_prompt: User's edit request.
+        target_duration: Desired output duration.
+        frame_map: Dict mapping video_path → [frame_path, ...] from extract_key_frames.
+
+    Returns:
+        Full prompt string with visual context header + edit instructions.
+    """
+    base_prompt = build_edit_prompt(scenes, beat_data, user_prompt, target_duration)
+
+    if not frame_map:
+        return base_prompt
+
+    # Build a visual context header describing which frames come from where
+    vision_header_lines = [
+        "VISUAL ANALYSIS — FRAME REFERENCE",
+        "=" * 50,
+        "I'm sending you actual frames extracted from the raw footage.",
+        "Use what you SEE in these frames to make smarter edit decisions.",
+        "",
+        "For each clip, I extracted frames at the start (10%), middle (50%), and end (90%).",
+        "Look at the frames and identify:",
+        "  • Which clips have the best energy, action, or emotion",
+        "  • What the best visual moments are",
+        "  • How to structure the narrative based on what you see",
+        "  • Shot composition quality (framing, lighting, focus)",
+        "  • Visual variety — avoid back-to-back clips that look the same",
+        "",
+        "Frame index:",
+    ]
+
+    frame_index = 1
+    for video_path, frame_paths in frame_map.items():
+        clip_name = Path(video_path).name
+        for fp in frame_paths:
+            fname = Path(fp).stem
+            vision_header_lines.append(f"  Frame {frame_index}: from '{clip_name}' — {fname}")
+            frame_index += 1
+
+    vision_header_lines.append("")
+    vision_header_lines.append(
+        "Based on what you SEE in these frames AND the scene timing data below, "
+        "make the best possible edit decisions. Prioritize visually striking moments."
+    )
+    vision_header_lines.append("=" * 50)
+    vision_header_lines.append("")
+
+    vision_header = "\n".join(vision_header_lines)
+    return vision_header + "\n" + base_prompt
 
 
 def build_edit_prompt(
@@ -173,6 +240,7 @@ def get_edit_decisions(
     user_prompt: str,
     target_duration: Optional[float] = None,
     video_files: Optional[List[str]] = None,
+    frame_analysis: bool = True,
 ) -> Dict[str, Any]:
     """
     Call Claude to get AI-driven editing decisions.
@@ -196,28 +264,84 @@ def get_edit_decisions(
     """
     # Try Kimi K2 first (faster, cheaper, vision-capable)
     if KIMI_API_KEY:
+        job_id_for_frames = None
         try:
             from openai import OpenAI as KimiClient
+            from frame_extractor import extract_key_frames, frames_to_base64, cleanup_frames
+
             kimi = KimiClient(api_key=KIMI_API_KEY, base_url="https://api.moonshot.ai/v1")
-            prompt = build_edit_prompt(scenes, beat_data, user_prompt, target_duration)
+
+            # --- Vision-enhanced path: extract frames and let Kimi SEE them ---
+            frame_map = None
+            all_frame_paths = []
+
+            if video_files and frame_analysis:
+                try:
+                    import uuid as _uuid
+                    job_id_for_frames = str(_uuid.uuid4())[:8]
+                    frame_map = extract_key_frames(
+                        video_files, max_frames_per_clip=3, job_id=job_id_for_frames,
+                    )
+                    # Flatten all frame paths for base64 encoding
+                    for paths in frame_map.values():
+                        all_frame_paths.extend(paths)
+                    logger.info(f"Extracted {len(all_frame_paths)} frames for Kimi vision")
+                except Exception as frame_err:
+                    logger.warning(f"Frame extraction failed ({frame_err}), continuing without vision")
+                    frame_map = None
+                    all_frame_paths = []
+
+            # Build prompt — vision-enhanced if we have frames, standard otherwise
+            if frame_map and all_frame_paths:
+                prompt = build_vision_edit_prompt(
+                    scenes, beat_data, user_prompt, target_duration, frame_map,
+                )
+            else:
+                prompt = build_edit_prompt(scenes, beat_data, user_prompt, target_duration)
+
+            # Build message content — include frame images if available
+            content = []
+            if all_frame_paths:
+                # Add frame images as base64 for Kimi to SEE
+                frame_contents = frames_to_base64(all_frame_paths)
+                content.extend(frame_contents)
+                logger.info(f"Sending {len(frame_contents)} frame images to Kimi K2")
+
+            content.append({"type": "text", "text": prompt})
+
             logger.info(f"Sending edit request to Kimi K2 ({KIMI_MODEL})...")
             kimi_response = kimi.chat.completions.create(
                 model=KIMI_MODEL,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": content}],
                 max_tokens=4096,
                 temperature=0.3,
             )
+
+            # Clean up frames
+            if job_id_for_frames:
+                cleanup_frames(job_id_for_frames)
+
             raw = kimi_response.choices[0].message.content.strip()
-            import re as _re
-            json_match = _re.search(r'\{.*\}', raw, _re.DOTALL)
+            json_match = re.search(r'\{.*\}', raw, re.DOTALL)
             if json_match:
                 result = json.loads(json_match.group())
                 clips = result.get("clips", [])
                 if clips:
-                    logger.info(f"Kimi edit decisions: {len(clips)} clips, ~{result.get('estimated_output_duration', 0):.1f}s")
+                    vision_tag = " (with vision)" if all_frame_paths else ""
+                    logger.info(
+                        f"Kimi edit decisions{vision_tag}: {len(clips)} clips, "
+                        f"~{result.get('estimated_output_duration', 0):.1f}s"
+                    )
                     return result
         except Exception as e:
             logger.warning(f"Kimi failed ({e}), falling back to Claude")
+            # Clean up frames on error too
+            if job_id_for_frames:
+                try:
+                    from frame_extractor import cleanup_frames
+                    cleanup_frames(job_id_for_frames)
+                except Exception:
+                    pass
 
     if not ANTHROPIC_API_KEY:
         logger.warning("No API key found — using rule-based fallback editor")

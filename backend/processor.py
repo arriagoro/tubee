@@ -156,6 +156,7 @@ def process_job(
     transition_style: Optional[str] = None,
     export_quality: Optional[str] = None,
     output_format: Optional[str] = None,
+    frame_analysis: bool = True,
 ) -> Dict[str, Any]:
     """
     Main processing pipeline. Takes raw footage and returns a finished video.
@@ -174,6 +175,7 @@ def process_job(
                           "glitch", "mixed", "fade".
         export_quality: Export quality tier — "1080p" (default), "2k", or "4k".
         output_format: Output format — "reels" (9:16), "landscape" (16:9), or "square" (1:1).
+        frame_analysis: When True, extract video frames for Kimi K2 visual analysis.
 
     Returns:
         Dict with:
@@ -276,6 +278,7 @@ def process_job(
             user_prompt=user_prompt,
             target_duration=target_duration,
             video_files=video_files,
+            frame_analysis=frame_analysis,
         )
     except Exception as e:
         logger.error(f"[{job_id}] AI editor failed: {e}")

@@ -94,6 +94,7 @@ class EditRequest(BaseModel):
     transition_style: Optional[str] = None  # Transition: hard_cut, whip_pan, circle_reveal, swipe, zoom_blur, glitch, mixed, fade
     export_quality: str = "1080p"        # Export quality: "1080p", "2k", "4k"
     output_format: str = "reels"         # Output format: "reels", "landscape", "square"
+    frame_analysis: bool = True          # Extract frames for Kimi K2 vision analysis
 
 
 class GenerateRequest(BaseModel):
@@ -314,6 +315,7 @@ async def start_edit(
         transition_style=backend_transition,
         export_quality=request.export_quality,
         output_format=request.output_format,
+        frame_analysis=request.frame_analysis,
     )
 
     return {
@@ -541,7 +543,7 @@ async def upscale_video_endpoint(
 # Background processing
 # ---------------------------------------------------------------------------
 
-def _run_processing_task(job_id: str, target_duration: Optional[float] = None, style_preset: Optional[str] = None, aspect_ratio: Optional[str] = None, transition_style: Optional[str] = None, export_quality: Optional[str] = None, output_format: Optional[str] = None) -> None:
+def _run_processing_task(job_id: str, target_duration: Optional[float] = None, style_preset: Optional[str] = None, aspect_ratio: Optional[str] = None, transition_style: Optional[str] = None, export_quality: Optional[str] = None, output_format: Optional[str] = None, frame_analysis: bool = True) -> None:
     """
     Background thread that runs the full processing pipeline.
     Updates job status as it progresses.
@@ -575,6 +577,7 @@ def _run_processing_task(job_id: str, target_duration: Optional[float] = None, s
             transition_style=transition_style,
             export_quality=export_quality,
             output_format=output_format,
+            frame_analysis=frame_analysis,
         )
 
         # Success
