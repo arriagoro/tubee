@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { TrialBanner } from '@/components/TrialBanner';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { useAuth } from '@/components/AuthProvider';
+import { hasUsedFreeTrial, markTrialUsed, hasPaidPlan } from '@/lib/auth';
 
 const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
 const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
@@ -65,6 +69,10 @@ export default function VibePage() {
     }
     if (!prompt.trim()) {
       setError('Describe your video first');
+      return;
+    }
+    if (!hasPaidPlan() && hasUsedFreeTrial()) {
+      setShowUpgradeModal(true);
       return;
     }
 
@@ -138,6 +146,7 @@ export default function VibePage() {
             setStage('done');
             setProgress(100);
             setStatusText('Your vibe edit is ready!');
+            if (!hasPaidPlan()) markTrialUsed();
 
             // Fetch generated code
             try {
@@ -182,6 +191,8 @@ export default function VibePage() {
   };
 
   const isProcessing = stage === 'uploading' || stage === 'generating' || stage === 'polling';
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { user } = useAuth();
 
   return (
     <main className="min-h-screen bg-dark text-white">
@@ -225,6 +236,10 @@ export default function VibePage() {
             Describe your video in natural language. AI writes the code. Remotion renders it. Magic.
           </p>
         </div>
+
+        {/* Trial Banner & Upgrade Modal */}
+        <TrialBanner />
+        <UpgradeModal show={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
         {stage === 'done' ? (
           /* ── Result ─────────────────────────────────────────── */

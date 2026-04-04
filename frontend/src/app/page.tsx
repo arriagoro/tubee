@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { Navbar } from '@/components/Navbar';
 
 const features = [
   {
@@ -63,7 +66,7 @@ const pricing = [
       'Priority processing',
       'Everything in Starter',
     ],
-    cta: 'Get Pro Access',
+    cta: 'Start Free Trial',
     href: 'https://www.fanbasis.com/agency-checkout/Dicipline/oyPRj',
     highlighted: true,
   },
@@ -73,29 +76,7 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       {/* Nav */}
-      <nav className="fixed top-0 w-full z-50 bg-dark/80 backdrop-blur-xl border-b border-[rgba(0,170,255,0.15)]">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-xl font-bold tracking-tight">
-            tubee<span className="text-accent">.</span>
-          </span>
-          <div className="hidden sm:flex items-center gap-8 text-sm text-secondary">
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-            <Link
-              href="/editor"
-              className="bg-accent text-white font-semibold px-4 py-2 rounded-lg hover:shadow-[0_0_20px_rgba(0,170,255,0.3)] transition-all"
-            >
-              Start Editing
-            </Link>
-          </div>
-          <Link
-            href="/editor"
-            className="sm:hidden bg-accent text-white font-semibold px-4 py-2 rounded-lg text-sm"
-          >
-            Start Editing
-          </Link>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero */}
       <section className="pt-40 pb-24 px-6">
@@ -114,17 +95,17 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/editor"
+              href="/auth/signup"
               className="bg-gradient-to-r from-[#00AAFF] to-[#00D4FF] text-white font-bold text-lg px-8 py-4 rounded-2xl hover:shadow-[0_0_40px_rgba(0,170,255,0.3)] hover:scale-[1.02] transition-all"
             >
               Start Editing Free →
             </Link>
-            <a
-              href="#pricing"
-              className="border border-[rgba(0,170,255,0.15)] text-white font-semibold text-lg px-8 py-4 rounded-2xl hover:bg-[rgba(0,170,255,0.05)] transition-all"
+            <Link
+              href="/auth/signup"
+              className="border border-accent/30 text-accent font-bold text-lg px-8 py-4 rounded-2xl hover:bg-[rgba(0,170,255,0.05)] transition-all"
             >
-              See Pricing ↓
-            </a>
+              Start Free Trial
+            </Link>
           </div>
         </div>
       </section>

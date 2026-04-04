@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { TrialBanner } from '@/components/TrialBanner';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { useAuth } from '@/components/AuthProvider';
+import { hasUsedFreeTrial, markTrialUsed, hasPaidPlan } from '@/lib/auth';
 
 const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
 const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
@@ -89,6 +93,8 @@ export default function EditorPage() {
           if (pollRef.current) clearInterval(pollRef.current);
           setStage('done');
           setProgress(100);
+          // Mark trial as used after successful edit
+          if (!hasPaidPlan()) markTrialUsed();
         } else if (data.status === 'failed' || data.status === 'error') {
           if (pollRef.current) clearInterval(pollRef.current);
           setStage('error');
@@ -102,6 +108,11 @@ export default function EditorPage() {
 
   const handleSubmit = async () => {
     if (videoFiles.length === 0) { setError('Select at least one video'); return; }
+    // Check trial/plan status before allowing edit
+    if (!hasPaidPlan() && hasUsedFreeTrial()) {
+      setShowUpgradeModal(true);
+      return;
+    }
     setError('');
     setStage('uploading');
     setProgress(0);
@@ -156,6 +167,8 @@ export default function EditorPage() {
   };
 
   const isWorking = stage === 'uploading' || stage === 'editing' || stage === 'polling';
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { user } = useAuth();
 
   return (
     <div style={{
@@ -211,6 +224,10 @@ export default function EditorPage() {
         </h1>
         <p style={{ color: '#8899BB', fontSize: 14, marginTop: 4 }}>AI-powered video editing</p>
       </div>
+
+      {/* Trial Banner & Upgrade Modal */}
+      <TrialBanner />
+      <UpgradeModal show={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       {/* ── Video Select ─────────────────────────────────── */}
       <input

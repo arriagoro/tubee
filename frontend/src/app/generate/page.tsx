@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { TrialBanner } from '@/components/TrialBanner';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { useAuth } from '@/components/AuthProvider';
+import { hasUsedFreeTrial, markTrialUsed, hasPaidPlan } from '@/lib/auth';
 
 const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
 const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
@@ -71,6 +75,8 @@ export default function GeneratePage() {
   const [musicError, setMusicError] = useState('');
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -96,6 +102,7 @@ export default function GeneratePage() {
           if (pollRef.current) clearInterval(pollRef.current);
           setters.setStage('done');
           setters.setProgress(100);
+          if (!hasPaidPlan()) markTrialUsed();
         } else if (data.status === 'failed' || data.status === 'error') {
           if (pollRef.current) clearInterval(pollRef.current);
           setters.setStage('error');
@@ -112,6 +119,7 @@ export default function GeneratePage() {
   // Video generation
   const handleGenerate = async () => {
     if (!prompt.trim()) { setError('Enter a prompt describing the video'); return; }
+    if (!hasPaidPlan() && hasUsedFreeTrial()) { setShowUpgradeModal(true); return; }
     setError('');
     setStage('generating');
     setProgress(0);
@@ -143,6 +151,7 @@ export default function GeneratePage() {
   // Image generation
   const handleGenerateImage = async () => {
     if (!imagePrompt.trim()) { setImageError('Enter a prompt describing the image'); return; }
+    if (!hasPaidPlan() && hasUsedFreeTrial()) { setShowUpgradeModal(true); return; }
     setImageError('');
     setImageStage('generating');
     setImageProgress(0);
@@ -174,6 +183,7 @@ export default function GeneratePage() {
   // Music generation
   const handleGenerateMusic = async () => {
     if (!musicPrompt.trim()) { setMusicError('Enter a prompt describing the music'); return; }
+    if (!hasPaidPlan() && hasUsedFreeTrial()) { setShowUpgradeModal(true); return; }
     setMusicError('');
     setMusicStage('generating');
     setMusicProgress(0);
@@ -278,6 +288,10 @@ export default function GeneratePage() {
           Powered by Google Veo 3.1, Imagen 4.0 & Lyria 3 Pro
         </p>
       </div>
+
+      {/* Trial Banner & Upgrade Modal */}
+      <TrialBanner />
+      <UpgradeModal show={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       {/* Sub-tabs: Video | Image | Music */}
       <div style={{

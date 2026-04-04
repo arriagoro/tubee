@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { TrialBanner } from '@/components/TrialBanner';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { useAuth } from '@/components/AuthProvider';
+import { hasUsedFreeTrial, markTrialUsed, hasPaidPlan } from '@/lib/auth';
 
 const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
 const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
@@ -27,6 +31,8 @@ export default function UpscalePage() {
   const [error, setError] = useState('');
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     loadJobs();
@@ -59,6 +65,7 @@ export default function UpscalePage() {
           if (pollRef.current) clearInterval(pollRef.current);
           setStage('done');
           setProgress(100);
+          if (!hasPaidPlan()) markTrialUsed();
         } else if (data.status === 'failed' || data.status === 'error') {
           if (pollRef.current) clearInterval(pollRef.current);
           setStage('error');
@@ -72,6 +79,7 @@ export default function UpscalePage() {
 
   const handleUpscale = async () => {
     if (!selectedJob) { setError('Select a video to upscale'); return; }
+    if (!hasPaidPlan() && hasUsedFreeTrial()) { setShowUpgradeModal(true); return; }
     setError('');
     setStage('upscaling');
     setProgress(0);
@@ -174,6 +182,10 @@ export default function UpscalePage() {
           Upscale your videos to 4K with AI • No API key needed
         </p>
       </div>
+
+      {/* Trial Banner & Upgrade Modal */}
+      <TrialBanner />
+      <UpgradeModal show={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       {/* ── Select Video ─────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
