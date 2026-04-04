@@ -111,6 +111,40 @@ export async function submitUpscale(req: UpscaleRequest): Promise<UpscaleRespons
   return res.json();
 }
 
+// ─── Vibe Edit ───────────────────────────────────────────────────────────────
+
+export interface VibeEditRequest {
+  job_id: string;
+  prompt: string;
+  style?: string;
+  duration?: number;
+}
+
+export interface VibeEditResponse {
+  job_id: string;
+  status: string;
+  message: string;
+}
+
+export async function submitVibeEdit(req: VibeEditRequest): Promise<VibeEditResponse> {
+  const res = await fetch(`${API_BASE}/vibe-edit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Vibe Edit failed' }));
+    throw new Error(err.detail || 'Vibe Edit failed');
+  }
+  return res.json();
+}
+
+export async function getVibeCode(jobId: string): Promise<{ job_id: string; code: string | null; status: string }> {
+  const res = await fetch(`${API_BASE}/vibe-code/${jobId}`, { headers: SKIP_NGROK });
+  if (!res.ok) throw new Error('Failed to fetch vibe code');
+  return res.json();
+}
+
 // ─── List Jobs ───────────────────────────────────────────────────────────────
 
 export interface JobSummary {

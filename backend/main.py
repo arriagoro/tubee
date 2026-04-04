@@ -116,6 +116,13 @@ class VoiceoverRequest(BaseModel):
     job_id: Optional[str] = None          # Attach to existing video job
 
 
+class VibeEditRequest(BaseModel):
+    job_id: str
+    prompt: str
+    style: Optional[str] = "social_reel"   # social_reel, highlight, brand_promo, testimonial, before_after
+    duration: Optional[int] = 15
+
+
 class UpscaleRequest(BaseModel):
     job_id: str
     scale: Optional[int] = 4              # 2 or 4
@@ -536,6 +543,89 @@ async def upscale_video_endpoint(
         "job_id": job_id,
         "status": "processing",
         "message": f"Upscale ({scale}x) started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Vibe Edit endpoint — AI + Remotion
+# ---------------------------------------------------------------------------
+
+@app.post("/vibe-edit", summary="AI Vibe Edit — describe your video, AI builds it")
+async def vibe_edit_endpoint(
+    request: VibeEditRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    AI-powered 'Vibe Edit': describe what you want in natural language,
+    AI generates Remotion code, renders it to a video.
+    Requires a job_id with previously uploaded clips.
+    Falls back to FFmpeg if Remotion render fails.
+    """
+    source_job_id = request.job_id
+    if source_job_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Job {source_job_id} not found")
+
+    source_job = jobs[source_job_id]
+    clips = source_job.get("video_files", [])
+    if not clips:
+        raise HTTPException(status_code=400, detail="No video files found for this job. Upload clips first.")
+
+    style = request.style or "social_reel"
+    valid_styles = ["social_reel", "highlight", "brand_promo", "testimonial", "before_after"]
+    if style not in valid_styles:
+        raise HTTPException(status_code=400, detail=f"Invalid style. Choose from: {valid_styles}")
+
+    # Create a new job for the vibe edit output
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting Vibe Edit",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": request.prompt,
+        "video_files": clips,
+        "music_file": source_job.get("music_file"),
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+        "vibe_code": None,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_vibe_edit_task,
+        job_id=job_id,
+        prompt=request.prompt,
+        clips=clips,
+        style=style,
+        music=source_job.get("music_file"),
+        duration=request.duration or 15,
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": "Vibe Edit started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+@app.get("/vibe-code/{job_id}", summary="Get generated Remotion code for a vibe edit")
+async def get_vibe_code(job_id: str) -> Dict[str, Any]:
+    """Return the AI-generated Remotion code for a vibe edit job."""
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    job = jobs[job_id]
+    return {
+        "job_id": job_id,
+        "code": job.get("vibe_code"),
+        "status": job["status"],
     }
 
 
@@ -989,6 +1079,68 @@ def _run_voiceover_task(job_id: str, text: str, voice_id: Optional[str], attach_
 
     except Exception as e:
         logger.error(f"[{job_id}] Voiceover failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+# ---------------------------------------------------------------------------
+# Background task: Vibe Edit
+# ---------------------------------------------------------------------------
+
+def _run_vibe_edit_task(
+    job_id: str,
+    prompt: str,
+    clips: List[str],
+    style: str,
+    music: Optional[str],
+    duration: int,
+) -> None:
+    """Background task: AI vibe edit pipeline."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+
+    from remotion_renderer import vibe_edit
+
+    output_path = str(OUTPUTS_DIR / f"{job_id}_vibe.mp4")
+
+    def progress_callback(stage: str, pct: int):
+        jobs[job_id]["stage"] = stage
+        jobs[job_id]["progress"] = pct
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+    try:
+        result = vibe_edit(
+            prompt=prompt,
+            clips=clips,
+            style=style,
+            music=music,
+            duration=duration,
+            output_path=output_path,
+            progress_callback=progress_callback,
+        )
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": result["output_path"],
+            "duration": result["duration"],
+            "clips_used": result["clips_used"],
+            "edit_notes": f"Vibe Edit ({style}) via {result['method']}",
+            "vibe_code": result.get("generated_code"),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Vibe Edit complete via {result['method']}")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Vibe Edit failed: {e}", exc_info=True)
         jobs[job_id].update({
             "status": "error",
             "stage": "Failed",
