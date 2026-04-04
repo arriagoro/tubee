@@ -458,6 +458,62 @@ export default function EditorPage() {
           >
             ⬇️ Download Video
           </button>
+
+          {/* Post-edit AI tools */}
+          <div style={{
+            display: 'flex', gap: 8, marginBottom: 12,
+          }}>
+            <button
+              onClick={async () => {
+                if (!jobId) return;
+                try {
+                  const res = await fetch(`${API}/generate-thumbnail`, {
+                    method: 'POST',
+                    headers: { ...HEADERS, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: jobId }),
+                  });
+                  const data = await res.json();
+                  if (data.job_id) {
+                    alert(`Thumbnail generating! Job ID: ${data.job_id}\nPoll /status/${data.job_id} to check progress.`);
+                  }
+                } catch { alert('Thumbnail generation failed'); }
+              }}
+              style={{
+                flex: 1, padding: 14, background: '#0D1526',
+                color: '#00AAFF', border: '1px solid rgba(0,170,255,0.3)', borderRadius: 12,
+                fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              🖼️ Generate Thumbnail
+            </button>
+            <button
+              onClick={async () => {
+                if (!jobId) return;
+                const musicPrompt = prompt || 'Upbeat background music for social media video';
+                try {
+                  const res = await fetch(`${API}/generate-music`, {
+                    method: 'POST',
+                    headers: { ...HEADERS, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: musicPrompt, duration: 30 }),
+                  });
+                  const data = await res.json();
+                  if (data.job_id) {
+                    alert(`Music generating! Job ID: ${data.job_id}\nPoll /status/${data.job_id} to check progress.`);
+                  }
+                } catch { alert('Music generation failed'); }
+              }}
+              style={{
+                flex: 1, padding: 14, background: '#0D1526',
+                color: '#00AAFF', border: '1px solid rgba(0,170,255,0.3)', borderRadius: 12,
+                fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              🎵 Generate Music
+            </button>
+          </div>
+
           <button
             onClick={handleReset}
             style={{

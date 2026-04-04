@@ -25,6 +25,148 @@ GENERATED_DIR = BASE_DIR / "generated"
 GENERATED_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# ---------------------------------------------------------------------------
+# Google Veo 3.1 (Top Priority)
+# ---------------------------------------------------------------------------
+
+def generate_with_veo(
+    prompt: str,
+    duration: int = 8,
+    aspect_ratio: str = "9:16",
+    quality: str = "standard",
+    progress_callback: Optional[Callable] = None,
+) -> str:
+    """
+    Generate video using Google Veo 3.1 via Gemini API (google-genai SDK).
+
+    Tries models in order:
+      1. veo-3.1-generate-preview (best quality)
+      2. veo-3.1-fast-generate-preview (faster)
+      3. veo-3.0-generate-001 (stable fallback)
+
+    Args:
+        prompt: Text description of the video to generate
+        duration: Duration in seconds (5-8 typical)
+        aspect_ratio: Aspect ratio string (e.g. "9:16", "16:9", "1:1")
+        quality: "standard" or "fast"
+        progress_callback: Optional callback(stage, pct)
+
+    Returns:
+        Path to the downloaded video file
+
+    Raises:
+        VideoGenerationError: If generation fails
+    """
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise NoAPIKeyError(
+            "GEMINI_API_KEY not set. Get your key at https://aistudio.google.com/"
+        )
+
+    try:
+        from google import genai
+        from google.genai import types
+    except ImportError:
+        raise VideoGenerationError(
+            "google-genai SDK not installed. Run: pip install google-genai"
+        )
+
+    client = genai.Client(api_key=api_key)
+
+    # Models to try in order of preference
+    if quality == "fast":
+        models = [
+            "veo-3.1-fast-generate-preview",
+            "veo-3.1-generate-preview",
+            "veo-3.0-generate-001",
+        ]
+    else:
+        models = [
+            "veo-3.1-generate-preview",
+            "veo-3.1-fast-generate-preview",
+            "veo-3.0-generate-001",
+        ]
+
+    last_error = None
+
+    for model_name in models:
+        try:
+            if progress_callback:
+                progress_callback(f"Generating with Veo ({model_name})", 10)
+
+            logger.info(f"Veo: trying model {model_name}")
+
+            operation = client.models.generate_videos(
+                model=model_name,
+                prompt=prompt,
+                config=types.GenerateVideosConfig(
+                    aspect_ratio=aspect_ratio,
+                    number_of_videos=1,
+                ),
+            )
+
+            # Poll until the operation completes
+            max_wait = 600  # 10 minutes
+            poll_interval = 10
+            elapsed = 0
+
+            while not operation.done and elapsed < max_wait:
+                time.sleep(poll_interval)
+                elapsed += poll_interval
+                operation = client.operations.get(operation)
+
+                if progress_callback:
+                    pct = min(10 + int(elapsed / max_wait * 80), 85)
+                    progress_callback(f"Veo generating ({model_name})", pct)
+
+            if not operation.done:
+                last_error = f"Veo ({model_name}) timed out after {max_wait}s"
+                logger.warning(last_error)
+                continue
+
+            # Check for errors
+            if operation.error:
+                last_error = f"Veo ({model_name}) error: {operation.error}"
+                logger.warning(last_error)
+                continue
+
+            # Extract generated video
+            result = operation.result
+            if not result or not result.generated_videos:
+                last_error = f"Veo ({model_name}) returned no videos"
+                logger.warning(last_error)
+                continue
+
+            video = result.generated_videos[0]
+            if not video.video or not video.video.uri:
+                last_error = f"Veo ({model_name}) video has no URI"
+                logger.warning(last_error)
+                continue
+
+            # Download the video
+            if progress_callback:
+                progress_callback("Downloading from Veo", 90)
+
+            output_path = str(GENERATED_DIR / f"veo_{uuid.uuid4().hex[:8]}.mp4")
+
+            # Use the client to download the video file
+            video_data = client.files.download(file=video.video)
+            with open(output_path, "wb") as f:
+                f.write(video_data)
+
+            logger.info(f"Veo video downloaded: {output_path} (model: {model_name})")
+            return output_path
+
+        except (NoAPIKeyError, VideoGenerationError):
+            raise
+        except Exception as e:
+            last_error = f"Veo ({model_name}): {e}"
+            logger.warning(last_error)
+            continue
+
+    raise VideoGenerationError(f"All Veo models failed. Last error: {last_error}")
+
+
 class VideoGenerationError(Exception):
     """Raised when all video generation providers fail."""
     pass
@@ -419,12 +561,16 @@ def generate_video(
 
     # Track which providers we tried and their errors
     providers = [
-        ("Runway ML", lambda: generate_with_runway(
-            enhanced_prompt, duration=duration, ratio=aspect_ratio,
+        ("Google Veo 3.1", lambda: generate_with_veo(
+            enhanced_prompt, duration=duration, aspect_ratio=aspect_ratio,
             progress_callback=progress_callback,
         )),
         ("Kling AI", lambda: generate_with_kling(
             enhanced_prompt, duration=duration, aspect_ratio=aspect_ratio,
+            progress_callback=progress_callback,
+        )),
+        ("Runway ML", lambda: generate_with_runway(
+            enhanced_prompt, duration=duration, ratio=aspect_ratio,
             progress_callback=progress_callback,
         )),
         ("Luma Dream Machine", lambda: generate_with_luma(

@@ -157,6 +157,7 @@ def process_job(
     export_quality: Optional[str] = None,
     output_format: Optional[str] = None,
     frame_analysis: bool = True,
+    auto_music: bool = False,
 ) -> Dict[str, Any]:
     """
     Main processing pipeline. Takes raw footage and returns a finished video.
@@ -251,6 +252,23 @@ def process_job(
 
     logger.info(f"[{job_id}] Total scenes detected: {len(all_scenes)}")
     progress(f"Found {len(all_scenes)} scenes across {len(video_files)} clip(s)", 25)
+
+    # --- STEP 1b (optional): Auto-generate music if none provided ---
+    if not music_file and auto_music:
+        progress("Generating background music with AI", 30)
+        logger.info(f"[{job_id}] No music provided, auto-generating with Lyria 3 Pro")
+        try:
+            from music_generator import generate_music
+            # Build a music prompt from the user's edit prompt
+            music_prompt = f"Background music for a video edit: {user_prompt}. Instrumental, no vocals, suitable for social media."
+            music_file = generate_music(
+                prompt=music_prompt,
+                duration_seconds=30,
+            )
+            logger.info(f"[{job_id}] Auto-generated music: {music_file}")
+        except Exception as e:
+            logger.warning(f"[{job_id}] Auto music generation failed (continuing without music): {e}")
+            music_file = None
 
     # --- STEP 2: Beat detection ---
     beat_data = None

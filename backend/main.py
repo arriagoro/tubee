@@ -123,6 +123,28 @@ class VibeEditRequest(BaseModel):
     duration: Optional[int] = 15
 
 
+class GenerateImageRequest(BaseModel):
+    prompt: str
+    style: Optional[str] = None
+    aspect_ratio: Optional[str] = "9:16"
+
+
+class EditImageRequest(BaseModel):
+    job_id: Optional[str] = None          # Use image from a completed job
+    image_url: Optional[str] = None       # Or provide a direct URL/path
+    edit_prompt: str
+
+
+class GenerateThumbnailRequest(BaseModel):
+    job_id: str
+    style_prompt: Optional[str] = None
+
+
+class GenerateMusicRequest(BaseModel):
+    prompt: str
+    duration: Optional[int] = 30          # Duration in seconds
+
+
 class UpscaleRequest(BaseModel):
     job_id: str
     scale: Optional[int] = 4              # 2 or 4
@@ -1141,6 +1163,413 @@ def _run_vibe_edit_task(
 
     except Exception as e:
         logger.error(f"[{job_id}] Vibe Edit failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+# ---------------------------------------------------------------------------
+# Image Generation endpoint
+# ---------------------------------------------------------------------------
+
+@app.post("/generate-image", summary="Generate an image from a text prompt")
+async def generate_image_endpoint(
+    request: GenerateImageRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    Generate an image using Google Imagen 4.0.
+    Processing runs asynchronously — poll GET /status/{job_id} for progress.
+    """
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    enhanced_prompt = request.prompt
+    if request.style:
+        enhanced_prompt = f"{request.style} style. {request.prompt}"
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting image generation",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": enhanced_prompt,
+        "video_files": [],
+        "music_file": None,
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_image_generation_task,
+        job_id=job_id,
+        prompt=enhanced_prompt,
+        aspect_ratio=request.aspect_ratio or "9:16",
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": "Image generation started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+@app.post("/edit-image", summary="Edit an existing image with AI")
+async def edit_image_endpoint(
+    request: EditImageRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    Edit an image using Nano Banana Pro (Gemini-powered image editing).
+    Provide a job_id of a completed image generation, or an image_url/path.
+    """
+    source_image = None
+    if request.job_id and request.job_id in jobs:
+        source_job = jobs[request.job_id]
+        if source_job.get("output_path") and os.path.exists(source_job["output_path"]):
+            source_image = source_job["output_path"]
+    elif request.image_url:
+        source_image = request.image_url
+
+    if not source_image:
+        raise HTTPException(status_code=400, detail="No source image found. Provide a valid job_id or image_url.")
+
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting image editing",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": request.edit_prompt,
+        "video_files": [],
+        "music_file": None,
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_image_edit_task,
+        job_id=job_id,
+        image_path=source_image,
+        edit_prompt=request.edit_prompt,
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": "Image editing started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+@app.post("/generate-thumbnail", summary="Generate a thumbnail from a completed video")
+async def generate_thumbnail_endpoint(
+    request: GenerateThumbnailRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    Auto-generate a thumbnail from a completed video's best frame.
+    Uses Nano Banana Pro to enhance and style the frame.
+    """
+    source_job_id = request.job_id
+    if source_job_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Source job {source_job_id} not found")
+
+    source_job = jobs[source_job_id]
+    if source_job["status"] != "done":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Source job is not complete (status: {source_job['status']})"
+        )
+
+    source_path = source_job.get("output_path")
+    if not source_path or not os.path.exists(source_path):
+        raise HTTPException(status_code=404, detail="Source video/image file not found")
+
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting thumbnail generation",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": request.style_prompt or "YouTube thumbnail",
+        "video_files": [],
+        "music_file": None,
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_thumbnail_task,
+        job_id=job_id,
+        source_path=source_path,
+        style_prompt=request.style_prompt,
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": "Thumbnail generation started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+@app.post("/generate-music", summary="Generate background music with AI")
+async def generate_music_endpoint(
+    request: GenerateMusicRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    Generate background music using Google Lyria 3 Pro.
+    Great for adding music to Tubee edits when the user has no music.
+    """
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting music generation",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": request.prompt,
+        "video_files": [],
+        "music_file": None,
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_music_generation_task,
+        job_id=job_id,
+        prompt=request.prompt,
+        duration=request.duration or 30,
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": "Music generation started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Background tasks: Image, Thumbnail, Music
+# ---------------------------------------------------------------------------
+
+def _run_image_generation_task(job_id: str, prompt: str, aspect_ratio: str) -> None:
+    """Background task: AI image generation."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from image_generator import generate_image_with_imagen
+
+    try:
+        jobs[job_id]["stage"] = "Generating image with Imagen 4.0"
+        jobs[job_id]["progress"] = 30
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+        output_path = generate_image_with_imagen(
+            prompt=prompt,
+            aspect_ratio=aspect_ratio,
+        )
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": output_path,
+            "edit_notes": "Generated with Imagen 4.0",
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Image generation complete")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Image generation failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+def _run_image_edit_task(job_id: str, image_path: str, edit_prompt: str) -> None:
+    """Background task: AI image editing."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from image_generator import edit_image_with_nano_banana
+
+    try:
+        jobs[job_id]["stage"] = "Editing image with AI"
+        jobs[job_id]["progress"] = 30
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+        output_path = edit_image_with_nano_banana(
+            image_path=image_path,
+            edit_prompt=edit_prompt,
+        )
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": output_path,
+            "edit_notes": "Edited with Nano Banana Pro",
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Image edit complete")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Image edit failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+def _run_thumbnail_task(job_id: str, source_path: str, style_prompt: Optional[str]) -> None:
+    """Background task: thumbnail generation from video frame."""
+    import sys
+    import subprocess as _sp
+    sys.path.insert(0, str(Path(__file__).parent))
+    from image_generator import generate_thumbnail
+
+    try:
+        ext = Path(source_path).suffix.lower()
+        video_exts = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".wmv"}
+
+        if ext in video_exts:
+            jobs[job_id]["stage"] = "Extracting best frame from video"
+            jobs[job_id]["progress"] = 20
+            jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+            save_job(job_id)
+
+            frame_path = str(GENERATED_DIR / f"{job_id}_frame.png")
+
+            # Get video duration
+            probe_cmd = [
+                "ffprobe", "-v", "quiet", "-print_format", "json",
+                "-show_format", source_path,
+            ]
+            probe_result = _sp.run(probe_cmd, capture_output=True, text=True)
+            duration = 5.0
+            if probe_result.returncode == 0:
+                fmt = json.loads(probe_result.stdout).get("format", {})
+                duration = float(fmt.get("duration", 5.0))
+
+            seek_time = duration / 3.0
+            extract_cmd = [
+                "ffmpeg", "-y", "-ss", str(seek_time),
+                "-i", source_path, "-frames:v", "1",
+                "-q:v", "2", frame_path,
+            ]
+            _sp.run(extract_cmd, capture_output=True, timeout=30)
+
+            if not os.path.exists(frame_path):
+                raise Exception("Failed to extract frame from video")
+        else:
+            frame_path = source_path
+
+        jobs[job_id]["stage"] = "Generating thumbnail with AI"
+        jobs[job_id]["progress"] = 50
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+        output_path = generate_thumbnail(
+            video_frame_path=frame_path,
+            style_prompt=style_prompt,
+        )
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": output_path,
+            "edit_notes": "Thumbnail generated with AI",
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Thumbnail generation complete")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Thumbnail generation failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+def _run_music_generation_task(job_id: str, prompt: str, duration: int) -> None:
+    """Background task: AI music generation."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from music_generator import generate_music
+
+    try:
+        jobs[job_id]["stage"] = "Generating music with Lyria 3 Pro"
+        jobs[job_id]["progress"] = 30
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+        output_path = generate_music(
+            prompt=prompt,
+            duration_seconds=duration,
+        )
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": output_path,
+            "music_file": output_path,
+            "edit_notes": f"Music generated with Lyria 3 Pro ({duration}s)",
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Music generation complete")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Music generation failed: {e}", exc_info=True)
         jobs[job_id].update({
             "status": "error",
             "stage": "Failed",
