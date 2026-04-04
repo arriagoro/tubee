@@ -16,12 +16,15 @@ logger = logging.getLogger(__name__)
 # Get your key at: https://console.anthropic.com/
 # ---------------------------------------------------------------------------
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "")
 
-# Model routing — use cheaper models to save money
-# claude-haiku-4-5 is ~10x cheaper than Sonnet and great for structured editing decisions
-# Switch to "claude-sonnet-4-6" only for complex creative prompts
+# Model routing
+# Primary: Kimi K2 Turbo (fast, smart, vision-capable, cheaper)
+# Fallback: Claude Haiku (if Kimi fails)
+# Premium: Claude Opus (for complex prompts)
+KIMI_MODEL = "kimi-k2-turbo-preview"
 CLAUDE_MODEL_FAST = os.environ.get("TUBEE_MODEL_FAST", "claude-haiku-4-5-20251001")
-CLAUDE_MODEL_PREMIUM = os.environ.get("TUBEE_MODEL_PREMIUM", "claude-opus-4-6-20250320")
+CLAUDE_MODEL_PREMIUM = os.environ.get("TUBEE_MODEL_PREMIUM", "claude-sonnet-4-6")
 
 # Complexity keywords that trigger premium model routing
 _COMPLEX_KEYWORDS = {
@@ -191,8 +194,33 @@ def get_edit_decisions(
         ValueError: If API key is not set.
         RuntimeError: If Claude call fails or returns invalid JSON.
     """
+    # Try Kimi K2 first (faster, cheaper, vision-capable)
+    if KIMI_API_KEY:
+        try:
+            from openai import OpenAI as KimiClient
+            kimi = KimiClient(api_key=KIMI_API_KEY, base_url="https://api.moonshot.ai/v1")
+            prompt = build_edit_prompt(scenes, beat_data, user_prompt, target_duration)
+            logger.info(f"Sending edit request to Kimi K2 ({KIMI_MODEL})...")
+            kimi_response = kimi.chat.completions.create(
+                model=KIMI_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=4096,
+                temperature=0.3,
+            )
+            raw = kimi_response.choices[0].message.content.strip()
+            import re as _re
+            json_match = _re.search(r'\{.*\}', raw, _re.DOTALL)
+            if json_match:
+                result = json.loads(json_match.group())
+                clips = result.get("clips", [])
+                if clips:
+                    logger.info(f"Kimi edit decisions: {len(clips)} clips, ~{result.get('estimated_output_duration', 0):.1f}s")
+                    return result
+        except Exception as e:
+            logger.warning(f"Kimi failed ({e}), falling back to Claude")
+
     if not ANTHROPIC_API_KEY:
-        logger.warning("No Anthropic API key found — using rule-based fallback editor")
+        logger.warning("No API key found — using rule-based fallback editor")
         return _rule_based_editor(scenes, beat_data, user_prompt, target_duration)
 
     try:
@@ -378,3 +406,76 @@ if __name__ == "__main__":
 
     result = get_edit_decisions(test_scenes, test_beats, test_prompt)
     print(json.dumps(result, indent=2))
+
+
+# ---------------------------------------------------------------------------
+# Kimi K2.5 Integration (Moonshot AI)
+# OpenAI-compatible API — can see video frames AND make edit decisions
+# ---------------------------------------------------------------------------
+
+def get_edit_decisions_kimi(
+    scenes: List[Dict[str, Any]],
+    beat_data: Optional[Dict[str, Any]],
+    user_prompt: str,
+    target_duration: Optional[float] = None,
+    video_files: Optional[List[str]] = None,
+    frame_paths: Optional[List[str]] = None,  # actual video frames for visual analysis
+) -> Dict[str, Any]:
+    """
+    Use Kimi K2.5 for edit decisions — it can ACTUALLY SEE video frames.
+    Falls back to Claude if Kimi key not set.
+    """
+    import os, base64
+    kimi_key = os.environ.get("KIMI_API_KEY")
+    if not kimi_key:
+        logger.info("KIMI_API_KEY not set, falling back to Claude")
+        return get_edit_decisions(scenes, beat_data, user_prompt, target_duration, video_files)
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            api_key=kimi_key,
+            base_url="https://api.moonshot.ai/v1"
+        )
+
+        # Build messages — include actual frame images if available
+        messages = []
+        content = []
+
+        # Add frame images if provided (Kimi can SEE them)
+        if frame_paths:
+            content.append({"type": "text", "text": "Here are frames from the video footage I need you to edit:"})
+            for frame_path in frame_paths[:20]:  # max 20 frames
+                try:
+                    with open(frame_path, "rb") as f:
+                        img_data = base64.b64encode(f.read()).decode()
+                    content.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{img_data}"}
+                    })
+                except Exception:
+                    pass
+
+        # Add the edit prompt
+        edit_prompt = build_edit_prompt(scenes, beat_data, user_prompt, target_duration)
+        content.append({"type": "text", "text": edit_prompt})
+        messages.append({"role": "user", "content": content})
+
+        response = client.chat.completions.create(
+            model="kimi-k2-5",
+            messages=messages,
+            max_tokens=4096,
+            temperature=0.3,
+        )
+
+        raw = response.choices[0].message.content.strip()
+        # Parse JSON response (same format as Claude)
+        import json, re
+        json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group())
+        return json.loads(raw)
+
+    except Exception as e:
+        logger.warning(f"Kimi edit failed: {e}, falling back to Claude")
+        return get_edit_decisions(scenes, beat_data, user_prompt, target_duration, video_files)
