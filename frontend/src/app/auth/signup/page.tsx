@@ -39,7 +39,7 @@ export default function SignupPage() {
       }
       if (user) {
         setSuccess(true);
-        setTimeout(() => router.push('/pricing'), 1500);
+        setTimeout(() => router.push('/editor'), 1500);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
@@ -71,7 +71,7 @@ export default function SignupPage() {
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
               <h2 style={{ color: '#00AAFF', marginBottom: 8 }}>Account Created!</h2>
-              <p style={{ color: '#8899BB' }}>Taking you to pricing...</p>
+              <p style={{ color: '#8899BB' }}>Taking you to the editor...</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>

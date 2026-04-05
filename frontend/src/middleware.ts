@@ -1,48 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-const PROTECTED_ROUTES = ['/editor', '/generate', '/vibe', '/captions', '/upscale'];
+// Protected routes — must be logged in
+const PROTECTED = ['/editor', '/generate', '/vibe', '/captions', '/upscale'];
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  // Only protect specific routes
-  const isProtected = PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
-  if (!isProtected) return NextResponse.next();
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  // If Supabase isn't configured, allow access (demo mode)
-  if (
-    !supabaseUrl ||
-    !supabaseAnonKey ||
-    supabaseUrl === 'your-supabase-url' ||
-    supabaseAnonKey === 'your-anon-key'
-  ) {
-    return NextResponse.next();
+  const isProtected = PROTECTED.some(p => pathname.startsWith(p));
+  
+  if (isProtected) {
+    // Check for Supabase auth cookie
+    const token = request.cookies.get('sb-jorxyrqhjpffkgkjzrjr-auth-token') || 
+                  request.cookies.get('sb-access-token') ||
+                  request.cookies.get('supabase-auth-token');
+    
+    if (!token) {
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
   }
-
-  // Check for Supabase auth cookie
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        cookie: request.headers.get('cookie') || '',
-      },
-    },
-  });
-
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    // Not logged in → redirect to login
-    const loginUrl = new URL('/auth/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // User is logged in — allow access
-  // Plan gating is handled client-side with the UpgradeModal
+  
   return NextResponse.next();
 }
 
