@@ -47,6 +47,14 @@ export default function PricingPage() {
 
   const handleFreeTrial = () => {
     grantFreeTrial();
+    // Check if user is logged in, if not send to signup first
+    if (typeof window !== 'undefined') {
+      const session = localStorage.getItem('tubee_demo_user');
+      if (!session) {
+        router.push('/auth/signup');
+        return;
+      }
+    }
     router.push('/editor');
   };
 
