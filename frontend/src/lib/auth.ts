@@ -74,7 +74,7 @@ export async function signInWithGoogle() {
 
   await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: 'https://tubee.itsthatseason.com/auth/callback', emailRedirectTo: 'https://tubee.itsthatseason.com/auth/callback' },
+    options: { redirectTo: 'https://tubee.itsthatseason.com/auth/callback' },
   });
 }
 

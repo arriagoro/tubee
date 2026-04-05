@@ -152,12 +152,6 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {/* Free trial CTA */}
-        <div style={{
-          textAlign: 'center', padding: '32px 20px',
-          background: '#0D1526', border: '1px solid rgba(0,170,255,0.12)',
-          borderRadius: 16, maxWidth: 500, margin: '0 auto',
-        }}>
       </div>
     </div>
   );
