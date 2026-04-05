@@ -7,6 +7,7 @@ import { grantFreeTrial } from '@/lib/auth';
 const plans = [
   {
     name: 'Starter',
+    trial: '1-day free trial',
     price: 29,
     badge: null,
     features: [
@@ -16,8 +17,8 @@ const plans = [
       'Instagram Reel format',
       'Beat sync to music',
     ],
-    cta: 'Get Starter',
-    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/l7PQ5',
+    cta: 'Start Free Trial',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/7XBoy',
     highlighted: false,
   },
   {
