@@ -158,25 +158,6 @@ export default function PricingPage() {
           background: '#0D1526', border: '1px solid rgba(0,170,255,0.12)',
           borderRadius: 16, maxWidth: 500, margin: '0 auto',
         }}>
-          <p style={{ color: '#8899BB', fontSize: 15, marginBottom: 16 }}>
-            Not ready to commit?
-          </p>
-          <button
-            onClick={handleFreeTrial}
-            style={{
-              background: 'transparent',
-              border: '1px solid rgba(0,170,255,0.3)',
-              color: '#00AAFF', fontWeight: 700, fontSize: 15,
-              padding: '12px 28px', borderRadius: 12, cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            Try 1 Free Edit →
-          </button>
-          <p style={{ color: '#4a5a7a', fontSize: 12, marginTop: 10 }}>
-            No credit card required. One free edit to test Tubee.
-          </p>
-        </div>
       </div>
     </div>
   );
