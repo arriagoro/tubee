@@ -55,6 +55,13 @@ export async function signUpWithEmail(email: string, password: string, name: str
     password,
     options: { data: { full_name: name } },
   });
+  
+  // If signup succeeded but needs email confirmation, auto-sign them in
+  if (data.user && !error) {
+    const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInData.user) return { user: signInData.user, error: null };
+  }
+  
   return { user: data.user, error };
 }
 
