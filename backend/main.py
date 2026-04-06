@@ -1703,3 +1703,12 @@ def _run_music_generation_task(job_id: str, prompt: str, duration: int) -> None:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+
+# Large file upload configuration
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class LargeUploadMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request.state.max_upload_size = 2 * 1024 * 1024 * 1024  # 2GB
+        return await call_next(request)
