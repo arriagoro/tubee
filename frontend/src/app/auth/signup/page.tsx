@@ -14,8 +14,8 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError('');
 
     if (!name.trim()) { setError('Please enter your name'); return; }
@@ -74,19 +74,19 @@ export default function SignupPage() {
               <p style={{ color: '#8899BB' }}>Taking you to the editor...</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit}>
+            <div>
               {error && (
                 <div style={{ background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, color: '#ff6b6b', fontSize: 14 }}>
                   {error}
                 </div>
               )}
 
-              <input style={inputStyle} type="text" placeholder="Full name" value={name} onChange={e => setName(e.target.value)} required />
-              <input style={inputStyle} type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required />
-              <input style={inputStyle} type="password" placeholder="Password (min 6 characters)" value={password} onChange={e => setPassword(e.target.value)} required />
-              <input style={inputStyle} type="password" placeholder="Confirm password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
+              <input style={inputStyle} type="text" placeholder="Full name" value={name} onChange={e => setName(e.target.value)} />
+              <input style={inputStyle} type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} />
+              <input style={inputStyle} type="password" placeholder="Password (min 6 characters)" value={password} onChange={e => setPassword(e.target.value)} />
+              <input style={inputStyle} type="password" placeholder="Confirm password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
 
-              <button type="submit" disabled={loading} style={{
+              <button type="button" onClick={() => handleSubmit()} disabled={loading} style={{
                 width: '100%', padding: '15px', borderRadius: 12, border: 'none',
                 background: loading ? '#1a2540' : 'linear-gradient(135deg, #00AAFF, #00D4FF)',
                 color: loading ? '#666' : '#fff', fontWeight: 700, fontSize: 16,
@@ -94,7 +94,7 @@ export default function SignupPage() {
               }}>
                 {loading ? 'Creating account...' : 'Create Account →'}
               </button>
-            </form>
+            </div>
           )}
 
           <div style={{ textAlign: 'center', marginTop: 24, color: '#8899BB', fontSize: 14 }}>

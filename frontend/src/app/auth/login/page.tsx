@@ -15,8 +15,8 @@ export default function LoginPage() {
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError('');
     setLoading(true);
     try {
@@ -87,17 +87,17 @@ export default function LoginPage() {
               <button onClick={() => setShowReset(false)} style={{ width: '100%', background: 'none', border: 'none', color: '#8899BB', cursor: 'pointer', fontSize: 14 }}>← Back to login</button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit}>
+            <div>
               {error && <div style={{ background: 'rgba(255,80,80,0.1)', border: '1px solid rgba(255,80,80,0.3)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, color: '#ff6b6b', fontSize: 14 }}>{error}</div>}
-              <input style={inputStyle} type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required />
-              <input style={inputStyle} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
+              <input style={inputStyle} type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} />
+              <input style={inputStyle} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
               <button type="button" onClick={() => { setShowReset(true); setResetEmail(email); setError(''); }} style={{ background: 'none', border: 'none', color: '#00AAFF', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}>
                 Forgot password?
               </button>
-              <button type="submit" disabled={loading} style={{ width: '100%', padding: '15px', borderRadius: 12, border: 'none', background: loading ? '#1a2540' : 'linear-gradient(135deg, #00AAFF, #00D4FF)', color: loading ? '#666' : '#fff', fontWeight: 700, fontSize: 16, cursor: loading ? 'not-allowed' : 'pointer' }}>
+              <button type="button" disabled={loading} onClick={handleSubmit as any} style={{ width: '100%', padding: '15px', borderRadius: 12, border: 'none', background: loading ? '#1a2540' : 'linear-gradient(135deg, #00AAFF, #00D4FF)', color: loading ? '#666' : '#fff', fontWeight: 700, fontSize: 16, cursor: loading ? 'not-allowed' : 'pointer' }}>
                 {loading ? 'Signing in...' : 'Sign In →'}
               </button>
-            </form>
+            </div>
           )}
 
           <div style={{ textAlign: 'center', marginTop: 24, color: '#8899BB', fontSize: 14 }}>
