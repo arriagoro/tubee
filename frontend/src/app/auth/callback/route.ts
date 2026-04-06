@@ -1,20 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get('code');
+  const { searchParams } = new URL(request.url);
+  const token_hash = searchParams.get('token_hash');
+  const type = searchParams.get('type');
+  const next = searchParams.get('next') ?? '/editor';
 
-  if (code) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (supabaseUrl && supabaseAnonKey) {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
-      await supabase.auth.exchangeCodeForSession(code);
-    }
+  if (token_hash && type === 'recovery') {
+    return NextResponse.redirect(
+      new URL(`/auth/reset-password?token_hash=${token_hash}&type=${type}`, request.url)
+    );
   }
 
-  // After OAuth callback, redirect to pricing (new signups pick a plan)
-  return NextResponse.redirect(new URL('/pricing', request.url));
+  if (token_hash && type === 'signup') {
+    return NextResponse.redirect(new URL('/editor', request.url));
+  }
+
+  return NextResponse.redirect(new URL(next, request.url));
 }
