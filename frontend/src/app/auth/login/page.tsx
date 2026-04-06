@@ -44,7 +44,7 @@ export default function LoginPage() {
     if (!resetEmail.trim()) { setError('Enter your email above'); return; }
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-      redirectTo: 'https://tubee.itsthatseason.com/auth/callback'
+      redirectTo: 'https://tubee.itsthatseason.com/auth/reset-password'
     });
     setLoading(false);
     if (error) { setError(error.message); return; }
