@@ -1,32 +1,34 @@
-"""Check and set FFmpeg path at startup"""
+"""Ensure FFmpeg is available - use imageio-ffmpeg as bundled fallback"""
 import os
-import subprocess
 import shutil
 
-def find_ffmpeg():
-    """Find ffmpeg/ffprobe binaries and add to PATH"""
-    # Common locations
-    paths = [
-        "/usr/bin", "/usr/local/bin", "/opt/homebrew/bin",
-        "/nix/store", "/app/.nixpacks/bin"
-    ]
+def setup_ffmpeg():
+    # Check if system ffmpeg exists
+    if shutil.which("ffmpeg") and shutil.which("ffprobe"):
+        return True
     
-    for path in paths:
-        if shutil.which("ffmpeg", path=path):
-            os.environ["PATH"] = f"{path}:{os.environ.get('PATH', '')}"
-            return True
-    
-    # Try installing via pip as last resort
+    # Use imageio-ffmpeg bundled binary
     try:
         import imageio_ffmpeg
-        ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
-        ffmpeg_dir = os.path.dirname(ffmpeg_path)
-        os.environ["PATH"] = f"{ffmpeg_dir}:{os.environ.get('PATH', '')}"
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        ffmpeg_dir = os.path.dirname(ffmpeg_exe)
+        
+        # Add to PATH
+        current_path = os.environ.get("PATH", "")
+        if ffmpeg_dir not in current_path:
+            os.environ["PATH"] = f"{ffmpeg_dir}:{current_path}"
+        
+        # Create ffprobe symlink if needed
+        ffprobe_path = os.path.join(ffmpeg_dir, "ffprobe")
+        if not os.path.exists(ffprobe_path):
+            # ffprobe is usually same binary as ffmpeg with different name
+            import stat
+            os.symlink(ffmpeg_exe, ffprobe_path)
+        
+        print(f"FFmpeg configured via imageio-ffmpeg: {ffmpeg_exe}")
         return True
-    except Exception:
-        pass
-    
-    return False
+    except Exception as e:
+        print(f"FFmpeg setup warning: {e}")
+        return False
 
-# Run at import
-find_ffmpeg()
+setup_ffmpeg()
