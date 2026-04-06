@@ -23,7 +23,10 @@ export default function LoginPage() {
         return;
       }
       if (data?.user) {
-        window.location.replace('https://tubee.itsthatseason.com/editor');
+        // Small delay to ensure cookie is set before redirect
+        setTimeout(() => {
+          window.location.replace('https://tubee.itsthatseason.com/editor');
+        }, 500);
       }
     } catch {
       setError('Something went wrong. Please try again.');
