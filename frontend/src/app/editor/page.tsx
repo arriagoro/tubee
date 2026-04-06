@@ -100,7 +100,7 @@ export default function EditorPage() {
       setStatusMsg('Uploading videos... (may take 30-60 seconds for large files)');
       // Use AbortController with 3 minute timeout for large files
       const controller = new AbortController();
-      const uploadTimeout = setTimeout(() => controller.abort(), 180000);
+      const uploadTimeout = setTimeout(() => controller.abort(), 600000); // 10 minutes for large files
       let upRes;
       try {
         upRes = await fetch(`${API}/upload`, {
