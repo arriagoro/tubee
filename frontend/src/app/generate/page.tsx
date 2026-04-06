@@ -30,8 +30,10 @@ const IMAGE_STYLES = [
 ];
 type Stage = 'idle' | 'generating' | 'polling' | 'done' | 'error';
 type Tab = 'video' | 'image' | 'music';
+type VideoMode = 'text-to-video' | 'image-to-video';
 export default function GeneratePage() {
   const [activeTab, setActiveTab] = useState<Tab>('video');
+  const [videoMode, setVideoMode] = useState<VideoMode>('text-to-video');
   // Video state
   const [prompt, setPrompt] = useState('');
   const [duration, setDuration] = useState(8);
@@ -42,6 +44,19 @@ export default function GeneratePage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  // Image-to-Video state
+  const [i2vImage, setI2vImage] = useState<File | null>(null);
+  const [i2vPreview, setI2vPreview] = useState<string | null>(null);
+  const [i2vPrompt, setI2vPrompt] = useState('');
+  const [i2vDuration, setI2vDuration] = useState(5);
+  const [i2vAspect, setI2vAspect] = useState('9:16');
+  const [i2vStyle, setI2vStyle] = useState('cinematic');
+  const [i2vStage, setI2vStage] = useState<Stage>('idle');
+  const [i2vProgress, setI2vProgress] = useState(0);
+  const [i2vStatusMsg, setI2vStatusMsg] = useState('');
+  const [i2vJobId, setI2vJobId] = useState<string | null>(null);
+  const [i2vError, setI2vError] = useState('');
+  const i2vFileRef = useRef<HTMLInputElement>(null);
   // Image state
   const [imagePrompt, setImagePrompt] = useState('');
   const [imageStyle, setImageStyle] = useState('photorealistic');
@@ -64,7 +79,7 @@ export default function GeneratePage() {
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
-  const startPolling = (id: string, type: Tab) => {
+  const startPolling = (id: string, type: Tab | 'i2v') => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
@@ -74,6 +89,7 @@ export default function GeneratePage() {
           video: { setProgress, setStatusMsg, setStage },
           image: { setProgress: setImageProgress, setStatusMsg: setImageStatusMsg, setStage: setImageStage },
           music: { setProgress: setMusicProgress, setStatusMsg: setMusicStatusMsg, setStage: setMusicStage },
+          i2v: { setProgress: setI2vProgress, setStatusMsg: setI2vStatusMsg, setStage: setI2vStage },
         }[type];
         setters.setProgress(data.progress ?? 0);
         setters.setStatusMsg(data.stage ?? data.status ?? '');
@@ -88,6 +104,7 @@ export default function GeneratePage() {
           if (type === 'video') setError(data.error || 'Generation failed');
           if (type === 'image') setImageError(data.error || 'Generation failed');
           if (type === 'music') setMusicError(data.error || 'Generation failed');
+          if (type === 'i2v') setI2vError(data.error || 'Generation failed');
         }
       } catch {
         // keep polling
@@ -178,6 +195,49 @@ export default function GeneratePage() {
       setMusicError(err instanceof Error ? err.message : 'Something went wrong');
     }
   };
+  // Image-to-Video: handle image upload
+  const handleI2vImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setI2vImage(file);
+    const url = URL.createObjectURL(file);
+    setI2vPreview(url);
+  };
+
+  // Image-to-Video generation
+  const handleGenerateI2v = async () => {
+    if (!i2vImage) { setI2vError('Upload an image first'); return; }
+    setI2vError('');
+    setI2vStage('generating');
+    setI2vProgress(0);
+    setI2vStatusMsg('Submitting to Kling AI…');
+    try {
+      const formData = new FormData();
+      formData.append('image', i2vImage);
+      formData.append('prompt', i2vPrompt);
+      formData.append('duration', String(i2vDuration));
+      formData.append('style', i2vStyle);
+      formData.append('aspect_ratio', i2vAspect);
+      const res = await fetch(`${API}/generate-image-to-video`, {
+        method: 'POST',
+        headers: { ...HEADERS },
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Request failed' }));
+        throw new Error(err.detail || `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      setI2vJobId(data.job_id);
+      setI2vStage('polling');
+      setI2vStatusMsg('Kling AI is generating your video from image…');
+      startPolling(data.job_id, 'i2v');
+    } catch (err: unknown) {
+      setI2vStage('error');
+      setI2vError(err instanceof Error ? err.message : 'Something went wrong');
+    }
+  };
+
   const handleDownload = (id: string | null, prefix: string) => {
     if (!id) return;
     const a = document.createElement('a');
@@ -188,6 +248,7 @@ export default function GeneratePage() {
   const isVideoWorking = stage === 'generating' || stage === 'polling';
   const isImageWorking = imageStage === 'generating' || imageStage === 'polling';
   const isMusicWorking = musicStage === 'generating' || musicStage === 'polling';
+  const isI2vWorking = i2vStage === 'generating' || i2vStage === 'polling';
   const tabStyle = (active: boolean) => ({
     flex: 1, padding: '10px 4px', textAlign: 'center' as const, border: 'none',
     background: active ? 'rgba(0,170,255,0.15)' : 'transparent',

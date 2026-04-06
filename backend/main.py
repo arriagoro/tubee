@@ -1338,6 +1338,80 @@ async def generate_thumbnail_endpoint(
     }
 
 
+@app.post("/generate-image-to-video", summary="Generate video from an image")
+async def generate_image_to_video_endpoint(
+    image: UploadFile = File(...),
+    prompt: str = Form(""),
+    duration: int = Form(5),
+    style: str = Form("cinematic"),
+    aspect_ratio: str = Form("9:16"),
+    background_tasks: BackgroundTasks = None,
+) -> Dict[str, Any]:
+    """
+    Generate a video from an uploaded image using Kling AI image-to-video.
+    Processing runs asynchronously — poll GET /status/{job_id} for progress.
+    """
+    if not image.filename:
+        raise HTTPException(status_code=400, detail="No image file provided")
+
+    job_id = str(uuid.uuid4())
+    job_upload_dir = UPLOADS_DIR / job_id
+    job_upload_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save uploaded image
+    safe_name = "".join(c for c in image.filename if c.isalnum() or c in "._- ")
+    image_dest = job_upload_dir / safe_name
+    with open(image_dest, "wb") as f:
+        content = await image.read()
+        f.write(content)
+
+    now = datetime.utcnow().isoformat()
+
+    # Enhance prompt with style
+    style_prefixes = {
+        "cinematic": "Cinematic, film-quality, dramatic lighting.",
+        "action": "Fast-paced, dynamic camera movement, high energy.",
+        "vlog": "Natural, warm colors, authentic and personal.",
+        "music_video": "Stylized, rhythmic movement, vivid colors.",
+        "documentary": "Documentary style, natural lighting, observational.",
+    }
+    prefix = style_prefixes.get(style, "")
+    enhanced_prompt = f"{prefix} {prompt}".strip() if prefix else prompt
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting image-to-video generation",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": enhanced_prompt,
+        "video_files": [],
+        "music_file": None,
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_image_to_video_task,
+        job_id=job_id,
+        image_path=str(image_dest),
+        prompt=enhanced_prompt,
+        duration=duration,
+        aspect_ratio=aspect_ratio,
+    )
+
+    return {
+        "job_id": job_id,
+        "status": "processing",
+        "message": "Image-to-video generation started. Poll GET /status/{job_id} for progress.",
+    }
+
+
 @app.post("/generate-music", summary="Generate background music with AI")
 async def generate_music_endpoint(
     request: GenerateMusicRequest,
@@ -1385,6 +1459,50 @@ async def generate_music_endpoint(
 # ---------------------------------------------------------------------------
 # Background tasks: Image, Thumbnail, Music
 # ---------------------------------------------------------------------------
+
+def _run_image_to_video_task(job_id: str, image_path: str, prompt: str, duration: int, aspect_ratio: str) -> None:
+    """Background task: AI image-to-video generation via Kling."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+
+    from video_generator import generate_image_to_video, VideoGenerationError, NoAPIKeyError
+
+    def progress_callback(stage: str, pct: int):
+        jobs[job_id]["stage"] = stage
+        jobs[job_id]["progress"] = pct
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+    try:
+        output_path = generate_image_to_video(
+            image_path=image_path,
+            prompt=prompt,
+            duration=duration,
+            aspect_ratio=aspect_ratio,
+            progress_callback=progress_callback,
+        )
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": output_path,
+            "edit_notes": "Generated with Kling AI (image-to-video)",
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Image-to-video generation complete")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Image-to-video generation failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
 
 def _run_image_generation_task(job_id: str, prompt: str, aspect_ratio: str) -> None:
     """Background task: AI image generation."""

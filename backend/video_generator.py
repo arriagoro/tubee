@@ -178,6 +178,153 @@ class NoAPIKeyError(VideoGenerationError):
 
 
 # ---------------------------------------------------------------------------
+# Kling AI — Image to Video
+# ---------------------------------------------------------------------------
+
+def generate_image_to_video(
+    image_path: str,
+    prompt: str,
+    duration: int = 5,
+    aspect_ratio: str = "9:16",
+    progress_callback: Optional[Callable] = None,
+) -> str:
+    """
+    Generate video from an image using Kling AI image-to-video.
+
+    Args:
+        image_path: Path to the source image file
+        prompt: Text description of how to animate the image
+        duration: Duration in seconds (5 or 10)
+        aspect_ratio: Aspect ratio (e.g. "9:16", "16:9", "1:1")
+        progress_callback: Optional callback(stage, pct)
+
+    Returns:
+        Path to the downloaded video file
+
+    Raises:
+        VideoGenerationError: If generation fails
+    """
+    import base64
+    import json as _json
+    import hmac
+    import hashlib
+
+    access_key = os.environ.get("KLING_ACCESS_KEY") or os.environ.get("KLING_API_KEY")
+    secret_key = os.environ.get("KLING_SECRET_KEY")
+
+    if not access_key:
+        raise NoAPIKeyError(
+            "KLING_ACCESS_KEY not set. Get your key at https://kling.ai/dev"
+        )
+
+    # Generate JWT token
+    def _kling_jwt(ak: str, sk: str) -> str:
+        header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').rstrip(b'=').decode()
+        now = int(time.time())
+        payload_dict = {"iss": ak, "exp": now + 1800, "nbf": now - 5}
+        payload_b64 = base64.urlsafe_b64encode(_json.dumps(payload_dict, separators=(',', ':')).encode()).rstrip(b'=').decode()
+        sig_input = f"{header}.{payload_b64}".encode()
+        sig = base64.urlsafe_b64encode(hmac.new(sk.encode(), sig_input, hashlib.sha256).digest()).rstrip(b'=').decode()
+        return f"{header}.{payload_b64}.{sig}"
+
+    if secret_key:
+        token = _kling_jwt(access_key, secret_key)
+    else:
+        token = access_key
+
+    base_url = "https://api.klingai.com/v1"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    if progress_callback:
+        progress_callback("Preparing image for Kling", 5)
+
+    # Read and encode image as base64
+    if not os.path.exists(image_path):
+        raise VideoGenerationError(f"Image file not found: {image_path}")
+
+    with open(image_path, "rb") as f:
+        image_data = f.read()
+    image_b64 = base64.b64encode(image_data).decode("utf-8")
+
+    if progress_callback:
+        progress_callback("Creating Kling image-to-video task", 10)
+
+    # Create generation task
+    payload = {
+        "image": image_b64,
+        "prompt": prompt,
+        "duration": str(duration),
+        "aspect_ratio": aspect_ratio,
+        "mode": "std",
+    }
+
+    resp = requests.post(
+        f"{base_url}/videos/image2video", json=payload, headers=headers, timeout=60
+    )
+    if resp.status_code not in (200, 201):
+        raise VideoGenerationError(f"Kling image2video API error ({resp.status_code}): {resp.text[:300]}")
+
+    result = resp.json()
+    task_id = result.get("data", {}).get("task_id") or result.get("task_id")
+    if not task_id:
+        raise VideoGenerationError(f"Kling returned no task ID: {result}")
+
+    logger.info(f"Kling image2video task created: {task_id}")
+
+    # Poll for completion
+    max_wait = 600
+    poll_interval = 8
+    elapsed = 0
+
+    while elapsed < max_wait:
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+
+        poll_resp = requests.get(
+            f"{base_url}/videos/image2video/{task_id}",
+            headers=headers, timeout=15,
+        )
+        if poll_resp.status_code != 200:
+            continue
+
+        data = poll_resp.json().get("data", poll_resp.json())
+        status = data.get("task_status", data.get("status", ""))
+
+        if progress_callback:
+            pct = min(10 + int(elapsed / max_wait * 80), 85)
+            progress_callback(f"Kling generating from image ({status})", pct)
+
+        if status in ("succeed", "completed", "SUCCEEDED"):
+            videos = data.get("task_result", {}).get("videos", [])
+            if not videos:
+                videos = data.get("videos", [])
+
+            output_url = videos[0].get("url") if videos else None
+            if not output_url:
+                raise VideoGenerationError("Kling image2video completed but no output URL")
+
+            output_path = str(GENERATED_DIR / f"kling_i2v_{uuid.uuid4().hex[:8]}.mp4")
+            if progress_callback:
+                progress_callback("Downloading from Kling", 90)
+
+            dl_resp = requests.get(output_url, timeout=120)
+            with open(output_path, "wb") as f:
+                f.write(dl_resp.content)
+
+            logger.info(f"Kling image2video downloaded: {output_path}")
+            return output_path
+
+        elif status in ("failed", "FAILED"):
+            error_msg = data.get("task_status_msg", "Unknown error")
+            raise VideoGenerationError(f"Kling image2video failed: {error_msg}")
+
+    raise VideoGenerationError("Kling image2video timed out after 10 minutes")
+
+
+# ---------------------------------------------------------------------------
 # Runway ML (Primary)
 # ---------------------------------------------------------------------------
 

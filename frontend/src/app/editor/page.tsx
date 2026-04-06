@@ -97,12 +97,22 @@ export default function EditorPage() {
       const form = new FormData();
       videoFiles.forEach(f => form.append('files', f));
       if (musicFile) form.append('files', musicFile);
-      const upRes = await fetch(`${API}/upload`, {
-        method: 'POST',
-        headers: HEADERS,
-        body: form,
-      });
-      if (!upRes.ok) throw new Error(`Upload failed (${upRes.status})`);
+      setStatusMsg('Uploading videos... (may take 30-60 seconds for large files)');
+      // Use AbortController with 3 minute timeout for large files
+      const controller = new AbortController();
+      const uploadTimeout = setTimeout(() => controller.abort(), 180000);
+      let upRes;
+      try {
+        upRes = await fetch(`${API}/upload`, {
+          method: 'POST',
+          headers: HEADERS,
+          body: form,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(uploadTimeout);
+      }
+      if (!upRes.ok) throw new Error(`Upload failed (${upRes.status}) — try with smaller files or fewer clips`);
       const upData = await upRes.json();
       const id = upData.job_id;
       setJobId(id);
