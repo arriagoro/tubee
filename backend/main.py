@@ -1,3 +1,4 @@
+import ffmpeg_check
 """
 main.py — FastAPI server for Tubee
 Handles file uploads, job submission, status polling, and download.
