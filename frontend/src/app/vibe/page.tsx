@@ -2,8 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-const API = 'https://tubee-production.up.railway.app';
-const HEADERS = {};
+const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
+const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
 const STYLES = [
   { label: 'Social Reel', value: 'social_reel', icon: '📱', desc: 'Animated text, color grade, vertical reel' },
   { label: 'Highlight', value: 'highlight', icon: '⚡', desc: 'Fast cuts with beat markers' },

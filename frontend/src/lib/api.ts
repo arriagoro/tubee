@@ -1,4 +1,4 @@
-const API_BASE = 'https://tubee-production.up.railway.app';
+const API_BASE = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
 const SKIP_NGROK = { 'ngrok-skip-browser-warning': 'true' };
 
 export interface UploadResponse {

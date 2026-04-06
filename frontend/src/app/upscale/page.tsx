@@ -2,8 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-const API = 'https://tubee-production.up.railway.app';
-const HEADERS = {};
+const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
+const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
 type Stage = 'idle' | 'loading-jobs' | 'upscaling' | 'polling' | 'done' | 'error';
 interface Job {
   job_id: string;
