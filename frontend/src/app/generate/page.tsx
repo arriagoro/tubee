@@ -2,8 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
-const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
+const API = 'https://tubee-production.up.railway.app';
+const HEADERS = {};
 const DURATIONS = [
   { label: '4s', value: 4, desc: 'Quick clip' },
   { label: '8s', value: 8, desc: 'Standard' },

@@ -2,8 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
-const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
+const API = 'https://tubee-production.up.railway.app';
+const HEADERS = {};
 const CAPTION_STYLES = [
   {
     id: 'temitayo',
