@@ -2,8 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
-const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
+import { apiBase, SKIP_NGROK } from '@/lib/api';
+const HEADERS = SKIP_NGROK;
 const STYLES = [
   { label: 'Social Reel', value: 'social_reel', icon: '📱', desc: 'Animated text, color grade, vertical reel' },
   { label: 'Highlight', value: 'highlight', icon: '⚡', desc: 'Fast cuts with beat markers' },
@@ -29,8 +29,10 @@ export default function VibePage() {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const musicInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const [API, setAPI] = useState('');
   // Cleanup polling on unmount
   useEffect(() => {
+    apiBase().then(base => setAPI(base));
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };

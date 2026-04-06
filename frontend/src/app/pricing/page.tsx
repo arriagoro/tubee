@@ -18,7 +18,7 @@ const plans = [
       'Beat sync to music',
     ],
     cta: 'Start Free Trial',
-    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/7XBoy',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/7XBoy?redirect=https://tubee.itsthatseason.com/editor',
     highlighted: false,
   },
   {
@@ -37,7 +37,7 @@ const plans = [
       '3-day free trial',
     ],
     cta: 'Start Free Trial',
-    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/oyPRj',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/oyPRj?redirect=https://tubee.itsthatseason.com/editor',
     highlighted: true,
   },
 ];
@@ -150,6 +150,32 @@ export default function PricingPage() {
               </a>
             </div>
           ))}
+        </div>
+
+        {/* Return to App */}
+        <div style={{
+          textAlign: 'center', maxWidth: 700, margin: '0 auto 40px',
+          padding: '24px 20px',
+          background: 'rgba(0,170,255,0.04)',
+          border: '1px solid rgba(0,170,255,0.12)',
+          borderRadius: 16,
+        }}>
+          <p style={{ color: '#8899BB', fontSize: 15, marginBottom: 14 }}>
+            Already paid? Click here to access the app →
+          </p>
+          <Link
+            href="/editor"
+            style={{
+              display: 'inline-block', padding: '12px 32px', borderRadius: 12,
+              background: 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+              color: '#fff', fontWeight: 700, fontSize: 15,
+              textDecoration: 'none',
+              boxShadow: '0 0 15px rgba(0,170,255,0.2)',
+              transition: 'all 0.2s',
+            }}
+          >
+            Go to Editor →
+          </Link>
         </div>
 
       </div>

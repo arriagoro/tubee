@@ -71,7 +71,22 @@ export default function SignupPage() {
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
               <h2 style={{ color: '#00AAFF', marginBottom: 8 }}>Account Created!</h2>
-              <p style={{ color: '#8899BB' }}>Taking you to the editor...</p>
+              <p style={{ color: '#8899BB', marginBottom: 20, lineHeight: 1.6 }}>
+                Check your email for your plan confirmation, then return here to start editing!
+              </p>
+              <Link
+                href="/editor"
+                style={{
+                  display: 'inline-block', padding: '14px 32px', borderRadius: 12,
+                  background: 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+                  color: '#fff', fontWeight: 700, fontSize: 16,
+                  textDecoration: 'none',
+                  boxShadow: '0 0 20px rgba(0,170,255,0.3)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                Start Editing Now →
+              </Link>
             </div>
           ) : (
             <div>

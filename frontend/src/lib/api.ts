@@ -1,5 +1,38 @@
-const API_BASE = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
-const SKIP_NGROK = { 'ngrok-skip-browser-warning': 'true' };
+const RAILWAY = 'https://tubee-production.up.railway.app';
+const NGROK = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
+export const SKIP_NGROK = { 'ngrok-skip-browser-warning': 'true' };
+
+async function getApiBase(): Promise<string> {
+  try {
+    const r = await fetch(`${RAILWAY}/`, { signal: AbortSignal.timeout(3000) });
+    if (r.ok) return RAILWAY;
+  } catch {}
+  return NGROK;
+}
+
+// Cache the result
+let _apiBase: string | null = null;
+let _isRailway: boolean = false;
+
+export async function apiBase(): Promise<string> {
+  if (!_apiBase) {
+    _apiBase = await getApiBase();
+    _isRailway = _apiBase === RAILWAY;
+  }
+  return _apiBase;
+}
+
+export function isRailwayActive(): boolean {
+  return _isRailway;
+}
+
+/** Force re-check on next call (e.g. after network change) */
+export function resetApiBase(): void {
+  _apiBase = null;
+  _isRailway = false;
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface UploadResponse {
   file_ids: string[];
@@ -25,6 +58,7 @@ export interface StatusResponse {
 }
 
 export async function uploadFiles(files: File[]): Promise<UploadResponse> {
+  const API_BASE = await apiBase();
   const formData = new FormData();
   files.forEach((file) => { formData.append('files', file); });
   const res = await fetch(`${API_BASE}/upload`, { method: 'POST', headers: SKIP_NGROK, body: formData });
@@ -33,6 +67,7 @@ export async function uploadFiles(files: File[]): Promise<UploadResponse> {
 }
 
 export async function uploadMusic(file: File): Promise<{ music_id: string }> {
+  const API_BASE = await apiBase();
   const formData = new FormData();
   formData.append('files', file);
   const res = await fetch(`${API_BASE}/upload`, { method: 'POST', headers: SKIP_NGROK, body: formData });
@@ -42,18 +77,21 @@ export async function uploadMusic(file: File): Promise<{ music_id: string }> {
 }
 
 export async function submitEdit(req: EditRequest): Promise<EditResponse> {
+  const API_BASE = await apiBase();
   const res = await fetch(`${API_BASE}/edit`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...SKIP_NGROK }, body: JSON.stringify(req) });
   if (!res.ok) { const err = await res.json().catch(() => ({ detail: 'Edit submission failed' })); throw new Error(err.detail || 'Edit submission failed'); }
   return res.json();
 }
 
 export async function getStatus(jobId: string): Promise<StatusResponse> {
+  const API_BASE = await apiBase();
   const res = await fetch(`${API_BASE}/status/${jobId}`, { headers: SKIP_NGROK });
   if (!res.ok) { throw new Error('Failed to fetch status'); }
   return res.json();
 }
 
-export function getDownloadUrl(jobId: string): string {
+export async function getDownloadUrl(jobId: string): Promise<string> {
+  const API_BASE = await apiBase();
   return `${API_BASE}/download/${jobId}`;
 }
 
@@ -73,6 +111,7 @@ export interface GenerateResponse {
 }
 
 export async function submitGenerate(req: GenerateRequest): Promise<GenerateResponse> {
+  const API_BASE = await apiBase();
   const res = await fetch(`${API_BASE}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },
@@ -99,6 +138,7 @@ export interface UpscaleResponse {
 }
 
 export async function submitUpscale(req: UpscaleRequest): Promise<UpscaleResponse> {
+  const API_BASE = await apiBase();
   const res = await fetch(`${API_BASE}/upscale`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },
@@ -127,6 +167,7 @@ export interface VibeEditResponse {
 }
 
 export async function submitVibeEdit(req: VibeEditRequest): Promise<VibeEditResponse> {
+  const API_BASE = await apiBase();
   const res = await fetch(`${API_BASE}/vibe-edit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },
@@ -140,6 +181,7 @@ export async function submitVibeEdit(req: VibeEditRequest): Promise<VibeEditResp
 }
 
 export async function getVibeCode(jobId: string): Promise<{ job_id: string; code: string | null; status: string }> {
+  const API_BASE = await apiBase();
   const res = await fetch(`${API_BASE}/vibe-code/${jobId}`, { headers: SKIP_NGROK });
   if (!res.ok) throw new Error('Failed to fetch vibe code');
   return res.json();
@@ -157,6 +199,7 @@ export interface JobSummary {
 }
 
 export async function listJobs(): Promise<{ total: number; jobs: JobSummary[] }> {
+  const API_BASE = await apiBase();
   const res = await fetch(`${API_BASE}/jobs`, { headers: SKIP_NGROK });
   if (!res.ok) throw new Error('Failed to list jobs');
   return res.json();

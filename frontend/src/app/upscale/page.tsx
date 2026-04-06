@@ -2,8 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
-const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
+import { apiBase, SKIP_NGROK } from '@/lib/api';
+const HEADERS = SKIP_NGROK;
 type Stage = 'idle' | 'loading-jobs' | 'upscaling' | 'polling' | 'done' | 'error';
 interface Job {
   job_id: string;
@@ -23,14 +23,18 @@ export default function UpscalePage() {
   const [error, setError] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user } = useAuth();
+  const [API, setAPI] = useState('');
   useEffect(() => {
-    loadJobs();
+    apiBase().then(base => {
+      setAPI(base);
+      loadJobsWithBase(base);
+    });
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
-  const loadJobs = async () => {
+  const loadJobsWithBase = async (base: string) => {
     setStage('loading-jobs');
     try {
-      const res = await fetch(`${API}/jobs`, { headers: HEADERS });
+      const res = await fetch(`${base}/jobs`, { headers: HEADERS });
       const data = await res.json();
       const completedJobs = (data.jobs || []).filter((j: Job) => j.status === 'done');
       setJobs(completedJobs);
@@ -38,6 +42,10 @@ export default function UpscalePage() {
     } catch {
       setStage('idle');
     }
+  };
+  const loadJobs = async () => {
+    const base = await apiBase();
+    await loadJobsWithBase(base);
   };
   const startPolling = (id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);

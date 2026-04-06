@@ -2,8 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
-const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
+import { apiBase, SKIP_NGROK } from '@/lib/api';
+const HEADERS = SKIP_NGROK;
 const DURATIONS = [
   { label: '4s', value: 4, desc: 'Quick clip' },
   { label: '8s', value: 8, desc: 'Standard' },
@@ -76,7 +76,9 @@ export default function GeneratePage() {
   const [musicError, setMusicError] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user } = useAuth();
+  const [API, setAPI] = useState('');
   useEffect(() => {
+    apiBase().then(base => setAPI(base));
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
   const startPolling = (id: string, type: Tab | 'i2v') => {

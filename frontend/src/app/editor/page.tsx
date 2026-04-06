@@ -2,8 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
-const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
+import { apiBase, isRailwayActive, SKIP_NGROK } from '@/lib/api';
+const HEADERS = SKIP_NGROK;
 const STYLES = [
   'Cinematic', 'Fast Cuts', 'Smooth', 'Vlog', 'Music Video',
   'Documentary', 'Retro', 'Minimal', 'Hype', 'Storytelling',
@@ -147,6 +147,11 @@ export default function EditorPage() {
   };
   const isWorking = stage === 'uploading' || stage === 'editing' || stage === 'polling';
   const { user } = useAuth();
+  const [API, setAPI] = useState('');
+  const [apiReady, setApiReady] = useState(false);
+  useEffect(() => {
+    apiBase().then(base => { setAPI(base); setApiReady(true); });
+  }, []);
   return (
     <div style={{
       minHeight: '100vh', background: '#0A0F1E', color: '#fff',
@@ -157,7 +162,22 @@ export default function EditorPage() {
       <nav style={{
         display: 'flex', gap: 0, marginBottom: 32, borderRadius: 14,
         overflow: 'hidden', border: '1px solid rgba(0,170,255,0.15)',
+        position: 'relative',
       }}>
+        {/* API Status Indicator */}
+        {apiReady && (
+          <div style={{
+            position: 'absolute', top: 4, right: 8,
+            display: 'flex', alignItems: 'center', gap: 4,
+            fontSize: 10, color: '#556677', zIndex: 10,
+          }}>
+            <div style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: isRailwayActive() ? '#00FF88' : '#FFD700',
+            }} />
+            {isRailwayActive() ? 'Railway' : 'ngrok'}
+          </div>
+        )}
         <div style={{
           flex: 1, padding: '14px 0', textAlign: 'center',
           background: '#00AAFF', color: '#fff', fontWeight: 700, fontSize: 15,

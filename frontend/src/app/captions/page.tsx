@@ -2,8 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
-const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
+import { apiBase, SKIP_NGROK } from '@/lib/api';
+const HEADERS = SKIP_NGROK;
 const CAPTION_STYLES = [
   {
     id: 'temitayo',
@@ -64,31 +64,43 @@ export default function CaptionsPage() {
   const [voError, setVoError] = useState('');
   const [voAttachJob, setVoAttachJob] = useState<string | null>(null);
   const { user } = useAuth();
+  const [API, setAPI] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const voPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    loadJobs();
-    loadVoices();
+    apiBase().then(base => {
+      setAPI(base);
+      loadJobsWithBase(base);
+      loadVoicesWithBase(base);
+    });
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (voPollRef.current) clearInterval(voPollRef.current);
     };
   }, []);
-  const loadJobs = async () => {
+  const loadJobsWithBase = async (base: string) => {
     try {
-      const res = await fetch(`${API}/jobs`, { headers: HEADERS });
+      const res = await fetch(`${base}/jobs`, { headers: HEADERS });
       const data = await res.json();
       const completedJobs = (data.jobs || []).filter((j: Job) => j.status === 'done');
       setJobs(completedJobs);
     } catch { /* silent */ }
   };
-  const loadVoices = async () => {
+  const loadJobs = async () => {
+    const base = await apiBase();
+    await loadJobsWithBase(base);
+  };
+  const loadVoicesWithBase = async (base: string) => {
     try {
-      const res = await fetch(`${API}/voices`, { headers: HEADERS });
+      const res = await fetch(`${base}/voices`, { headers: HEADERS });
       const data = await res.json();
       setVoices(data.voices || []);
     } catch { /* silent */ }
+  };
+  const loadVoices = async () => {
+    const base = await apiBase();
+    await loadVoicesWithBase(base);
   };
   const startPolling = (id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
