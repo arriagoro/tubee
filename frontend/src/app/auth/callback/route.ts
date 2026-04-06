@@ -2,20 +2,32 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const token_hash = searchParams.get('token_hash');
-  const type = searchParams.get('type');
-  const next = searchParams.get('next') ?? '/editor';
+  const url = new URL(request.url);
+  const token_hash = url.searchParams.get('token_hash');
+  const type = url.searchParams.get('type');
+  const code = url.searchParams.get('code');
+  const error = url.searchParams.get('error');
+  const error_description = url.searchParams.get('error_description');
 
-  if (token_hash && type === 'recovery') {
+  // Handle errors
+  if (error) {
     return NextResponse.redirect(
-      new URL(`/auth/reset-password?token_hash=${token_hash}&type=${type}`, request.url)
+      new URL(`/auth/login?error=${encodeURIComponent(error_description || error)}`, request.url)
     );
   }
 
-  if (token_hash && type === 'signup') {
+  // Handle password recovery
+  if (type === 'recovery' && token_hash) {
+    return NextResponse.redirect(
+      new URL(`/auth/reset-password?token_hash=${token_hash}&type=recovery`, request.url)
+    );
+  }
+
+  // Handle email confirmation or OAuth
+  if (code || (type === 'signup' && token_hash)) {
     return NextResponse.redirect(new URL('/editor', request.url));
   }
 
-  return NextResponse.redirect(new URL(next, request.url));
+  // Default
+  return NextResponse.redirect(new URL('/editor', request.url));
 }
