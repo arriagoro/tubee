@@ -280,7 +280,7 @@ def get_edit_decisions(
                     import uuid as _uuid
                     job_id_for_frames = str(_uuid.uuid4())[:8]
                     frame_map = extract_key_frames(
-                        video_files, max_frames_per_clip=3, job_id=job_id_for_frames,
+                        video_files, max_frames_per_clip=1, job_id=job_id_for_frames,
                     )
                     # Flatten all frame paths for base64 encoding
                     for paths in frame_map.values():

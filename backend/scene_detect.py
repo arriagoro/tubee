@@ -41,7 +41,7 @@ def detect_scenes(video_path: str, threshold: float = 27.0) -> List[Dict[str, An
         scene_manager.add_detector(ContentDetector(threshold=threshold))
 
         # Improve performance by downscaling before detection
-        video_manager.set_downscale_factor()
+        video_manager.set_downscale_factor(4)  # Faster detection with downscaling
         video_manager.start()
 
         scene_manager.detect_scenes(frame_source=video_manager)
