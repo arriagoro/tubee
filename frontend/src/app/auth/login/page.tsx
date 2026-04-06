@@ -23,7 +23,7 @@ export default function LoginPage() {
         return;
       }
       if (data?.user) {
-        window.location.href = '/editor';
+        window.location.replace('https://tubee.itsthatseason.com/editor');
       }
     } catch {
       setError('Something went wrong. Please try again.');
