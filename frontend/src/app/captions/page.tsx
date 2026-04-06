@@ -1,15 +1,9 @@
 'use client';
-
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { TrialBanner } from '@/components/TrialBanner';
-import { UpgradeModal } from '@/components/UpgradeModal';
 import { useAuth } from '@/components/AuthProvider';
-import { hasUsedFreeTrial, markTrialUsed, hasPaidPlan } from '@/lib/auth';
-
 const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
 const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
-
 const CAPTION_STYLES = [
   {
     id: 'temitayo',
@@ -40,9 +34,7 @@ const CAPTION_STYLES = [
     preview: { color: '#ffffff', bg: '#0D1526', fontWeight: 900, textTransform: 'none' as const },
   },
 ];
-
 type Stage = 'idle' | 'loading-jobs' | 'uploading' | 'processing' | 'polling' | 'done' | 'error';
-
 interface Job {
   job_id: string;
   status: string;
@@ -50,7 +42,6 @@ interface Job {
   stage: string;
   created_at: string;
 }
-
 export default function CaptionsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
@@ -62,7 +53,6 @@ export default function CaptionsPage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [captionJobId, setCaptionJobId] = useState<string | null>(null);
   const [error, setError] = useState('');
-
   // Voiceover state
   const [voText, setVoText] = useState('');
   const [voVoiceId, setVoVoiceId] = useState('');
@@ -73,13 +63,10 @@ export default function CaptionsPage() {
   const [voStatusMsg, setVoStatusMsg] = useState('');
   const [voError, setVoError] = useState('');
   const [voAttachJob, setVoAttachJob] = useState<string | null>(null);
-
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const voPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   useEffect(() => {
     loadJobs();
     loadVoices();
@@ -88,7 +75,6 @@ export default function CaptionsPage() {
       if (voPollRef.current) clearInterval(voPollRef.current);
     };
   }, []);
-
   const loadJobs = async () => {
     try {
       const res = await fetch(`${API}/jobs`, { headers: HEADERS });
@@ -97,7 +83,6 @@ export default function CaptionsPage() {
       setJobs(completedJobs);
     } catch { /* silent */ }
   };
-
   const loadVoices = async () => {
     try {
       const res = await fetch(`${API}/voices`, { headers: HEADERS });
@@ -105,7 +90,6 @@ export default function CaptionsPage() {
       setVoices(data.voices || []);
     } catch { /* silent */ }
   };
-
   const startPolling = (id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
@@ -114,12 +98,11 @@ export default function CaptionsPage() {
         const data = await res.json();
         setProgress(data.progress ?? 0);
         setStatusMsg(data.stage ?? data.status ?? '');
-
         if (data.status === 'done') {
           if (pollRef.current) clearInterval(pollRef.current);
           setStage('done');
           setProgress(100);
-          if (!hasPaidPlan()) markTrialUsed();
+          // trial check removed)
         } else if (data.status === 'error') {
           if (pollRef.current) clearInterval(pollRef.current);
           setStage('error');
@@ -128,15 +111,13 @@ export default function CaptionsPage() {
       } catch { /* keep polling */ }
     }, 3000);
   };
-
   const handleCaptionFromJob = async () => {
     if (!selectedJob) { setError('Select a completed video'); return; }
-    if (!hasPaidPlan() && hasUsedFreeTrial()) { setShowUpgradeModal(true); return; }
+    // trial check removed
     setError('');
     setStage('processing');
     setProgress(0);
     setStatusMsg('Starting caption generation…');
-
     try {
       const res = await fetch(`${API}/captions`, {
         method: 'POST',
@@ -149,7 +130,6 @@ export default function CaptionsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Failed to start captioning');
-
       setCaptionJobId(data.job_id);
       setStage('polling');
       startPolling(data.job_id);
@@ -158,21 +138,18 @@ export default function CaptionsPage() {
       setError(err.message || 'Failed to start captioning');
     }
   };
-
   const handleCaptionFromUpload = async () => {
     if (!uploadFile) { setError('Select a video file to upload'); return; }
-    if (!hasPaidPlan() && hasUsedFreeTrial()) { setShowUpgradeModal(true); return; }
+    // trial check removed
     setError('');
     setStage('uploading');
     setProgress(0);
     setStatusMsg('Uploading video…');
-
     try {
       const formData = new FormData();
       formData.append('file', uploadFile);
       formData.append('style', captionStyle);
       formData.append('word_by_word', String(wordByWord));
-
       const res = await fetch(`${API}/captions/upload`, {
         method: 'POST',
         headers: HEADERS,
@@ -180,7 +157,6 @@ export default function CaptionsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Upload failed');
-
       setCaptionJobId(data.job_id);
       setStage('polling');
       startPolling(data.job_id);
@@ -189,7 +165,6 @@ export default function CaptionsPage() {
       setError(err.message || 'Upload failed');
     }
   };
-
   const startVoPolling = (id: string) => {
     if (voPollRef.current) clearInterval(voPollRef.current);
     voPollRef.current = setInterval(async () => {
@@ -198,7 +173,6 @@ export default function CaptionsPage() {
         const data = await res.json();
         setVoProgress(data.progress ?? 0);
         setVoStatusMsg(data.stage ?? '');
-
         if (data.status === 'done') {
           if (voPollRef.current) clearInterval(voPollRef.current);
           setVoStage('done');
@@ -211,19 +185,16 @@ export default function CaptionsPage() {
       } catch { /* keep polling */ }
     }, 3000);
   };
-
   const handleVoiceover = async () => {
     if (!voText.trim()) { setVoError('Enter some text'); return; }
     setVoError('');
     setVoStage('generating');
     setVoProgress(0);
     setVoStatusMsg('Starting voiceover…');
-
     try {
       const body: any = { text: voText };
       if (voVoiceId) body.voice_id = voVoiceId;
       if (voAttachJob) body.job_id = voAttachJob;
-
       const res = await fetch(`${API}/voiceover`, {
         method: 'POST',
         headers: { ...HEADERS, 'Content-Type': 'application/json' },
@@ -231,7 +202,6 @@ export default function CaptionsPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Failed');
-
       setVoJobId(data.job_id);
       setVoStage('polling');
       startVoPolling(data.job_id);
@@ -240,7 +210,6 @@ export default function CaptionsPage() {
       setVoError(err.message || 'Failed');
     }
   };
-
   const resetCaptions = () => {
     setStage('idle');
     setProgress(0);
@@ -251,7 +220,6 @@ export default function CaptionsPage() {
     setSelectedJob(null);
     loadJobs();
   };
-
   const resetVoiceover = () => {
     setVoStage('idle');
     setVoProgress(0);
@@ -260,14 +228,12 @@ export default function CaptionsPage() {
     setVoError('');
     setVoText('');
   };
-
   return (
     <div style={{
       minHeight: '100vh', background: '#0A0F1E', color: '#fff',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     }}>
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '24px 16px 80px' }}>
-
         {/* Navigation */}
         <nav style={{
           display: 'flex', gap: 0, marginBottom: 32, borderRadius: 14,
@@ -308,7 +274,6 @@ export default function CaptionsPage() {
             🔍 Upscale
           </Link>
         </nav>
-
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#00AAFF' }}>
@@ -318,11 +283,9 @@ export default function CaptionsPage() {
             Transcribe & burn captions into your video — powered by Whisper + FFmpeg
           </p>
         </div>
-
         {/* Trial Banner & Upgrade Modal */}
-        <TrialBanner />
-        <UpgradeModal show={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
-
+        
+        
         {/* ─── CAPTIONS SECTION ──────────────────────────────── */}
         {(stage === 'idle' || stage === 'loading-jobs') && (
           <>
@@ -334,7 +297,6 @@ export default function CaptionsPage() {
               <h3 style={{ margin: '0 0 12px', fontSize: 15, color: '#8899BB' }}>
                 📹 Select Video
               </h3>
-
               {/* Upload option */}
               <input
                 ref={fileInputRef}
@@ -358,7 +320,6 @@ export default function CaptionsPage() {
               >
                 {uploadFile ? `📁 ${uploadFile.name}` : '📤 Upload a video file'}
               </button>
-
               {/* OR divider */}
               <div style={{
                 textAlign: 'center', color: '#2a3a5a', fontSize: 12,
@@ -366,7 +327,6 @@ export default function CaptionsPage() {
               }}>
                 — OR select from completed jobs —
               </div>
-
               {/* Completed jobs */}
               <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                 {jobs.length === 0 ? (
@@ -398,7 +358,6 @@ export default function CaptionsPage() {
                 )}
               </div>
             </div>
-
             {/* Caption style selector */}
             <div style={{
               background: '#0D1526', borderRadius: 16, padding: 20,
@@ -444,7 +403,6 @@ export default function CaptionsPage() {
                 ))}
               </div>
             </div>
-
             {/* Word-by-word toggle */}
             <div style={{
               background: '#0D1526', borderRadius: 16, padding: 16,
@@ -474,7 +432,6 @@ export default function CaptionsPage() {
                 }} />
               </button>
             </div>
-
             {/* Submit button */}
             <button
               onClick={uploadFile ? handleCaptionFromUpload : handleCaptionFromJob}
@@ -489,7 +446,6 @@ export default function CaptionsPage() {
             >
               💬 Add Captions
             </button>
-
             {error && (
               <div style={{
                 background: '#2a1515', border: '1px solid #ff4444',
@@ -501,7 +457,6 @@ export default function CaptionsPage() {
             )}
           </>
         )}
-
         {/* Processing / Polling state */}
         {(stage === 'uploading' || stage === 'processing' || stage === 'polling') && (
           <div style={{
@@ -515,7 +470,6 @@ export default function CaptionsPage() {
             <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 20 }}>
               {statusMsg || 'Processing your video…'}
             </p>
-
             {/* Progress bar */}
             <div style={{
               height: 6, background: '#0A0F1E', borderRadius: 3,
@@ -529,7 +483,6 @@ export default function CaptionsPage() {
             <p style={{ color: '#3a4a6a', fontSize: 12 }}>{progress}%</p>
           </div>
         )}
-
         {/* Done state */}
         {stage === 'done' && captionJobId && (
           <div style={{
@@ -565,7 +518,6 @@ export default function CaptionsPage() {
             </button>
           </div>
         )}
-
         {/* Error state */}
         {stage === 'error' && (
           <div style={{
@@ -586,7 +538,6 @@ export default function CaptionsPage() {
             </button>
           </div>
         )}
-
         {/* ─── VOICEOVER SECTION ────────────────────────────── */}
         <div style={{ marginTop: 40 }}>
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -597,7 +548,6 @@ export default function CaptionsPage() {
               Generate AI voiceover with ElevenLabs
             </p>
           </div>
-
           {voStage === 'idle' && (
             <>
               {/* Script input */}
@@ -619,7 +569,6 @@ export default function CaptionsPage() {
                   }}
                 />
               </div>
-
               {/* Voice selector */}
               <div style={{
                 background: '#0D1526', borderRadius: 16, padding: 20,
@@ -645,7 +594,6 @@ export default function CaptionsPage() {
                   ))}
                 </select>
               </div>
-
               {/* Attach to video */}
               <div style={{
                 background: '#0D1526', borderRadius: 16, padding: 20,
@@ -671,7 +619,6 @@ export default function CaptionsPage() {
                   ))}
                 </select>
               </div>
-
               <button
                 onClick={handleVoiceover}
                 disabled={!voText.trim()}
@@ -686,7 +633,6 @@ export default function CaptionsPage() {
               >
                 🎙️ Generate Voiceover
               </button>
-
               {voError && (
                 <div style={{
                   background: '#2a1515', border: '1px solid #ff4444',
@@ -698,7 +644,6 @@ export default function CaptionsPage() {
               )}
             </>
           )}
-
           {(voStage === 'generating' || voStage === 'polling') && (
             <div style={{
               background: '#0D1526', borderRadius: 16, padding: 32,
@@ -721,7 +666,6 @@ export default function CaptionsPage() {
               <p style={{ color: '#3a4a6a', fontSize: 12 }}>{voProgress}%</p>
             </div>
           )}
-
           {voStage === 'done' && voJobId && (
             <div style={{
               background: '#0D1526', borderRadius: 16, padding: 32,
@@ -753,7 +697,6 @@ export default function CaptionsPage() {
               </button>
             </div>
           )}
-
           {voStage === 'error' && (
             <div style={{
               background: '#1a1212', borderRadius: 16, padding: 32,
@@ -774,7 +717,6 @@ export default function CaptionsPage() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

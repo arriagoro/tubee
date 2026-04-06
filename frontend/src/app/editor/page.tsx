@@ -1,27 +1,19 @@
 'use client';
-
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { TrialBanner } from '@/components/TrialBanner';
-import { UpgradeModal } from '@/components/UpgradeModal';
 import { useAuth } from '@/components/AuthProvider';
-import { hasUsedFreeTrial, markTrialUsed, hasPaidPlan } from '@/lib/auth';
-
 const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
 const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
-
 const STYLES = [
   'Cinematic', 'Fast Cuts', 'Smooth', 'Vlog', 'Music Video',
   'Documentary', 'Retro', 'Minimal', 'Hype', 'Storytelling',
 ];
-
 const ASPECT_RATIOS = [
   { label: '9:16', icon: '📱', desc: 'Reels/TikTok' },
   { label: '1:1', icon: '⬜', desc: 'Feed Square' },
   { label: '4:5', icon: '📷', desc: 'IG Portrait' },
   { label: '16:9', icon: '🖥️', desc: 'YouTube' },
 ];
-
 const TRANSITIONS = [
   { label: 'None', value: 'hard_cut' },
   { label: 'Whip Pan', value: 'whip_pan' },
@@ -31,21 +23,17 @@ const TRANSITIONS = [
   { label: 'Glitch', value: 'glitch' },
   { label: 'Mixed', value: 'mixed' },
 ];
-
 const EXPORT_QUALITIES = [
   { label: '1080p', value: '1080p', badge: null },
   { label: '2K', value: '2k', badge: null },
   { label: '4K', value: '4k', badge: 'Pro' },
 ];
-
 const OUTPUT_FORMATS = [
   { label: 'Reels (9:16)', value: 'reels' },
   { label: 'Landscape (16:9)', value: 'landscape' },
   { label: 'Square (1:1)', value: 'square' },
 ];
-
 type Stage = 'idle' | 'uploading' | 'editing' | 'polling' | 'done' | 'error';
-
 export default function EditorPage() {
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
   const [musicFile, setMusicFile] = useState<File | null>(null);
@@ -60,26 +48,21 @@ export default function EditorPage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState('');
-
   const videoInputRef = useRef<HTMLInputElement>(null);
   const musicInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   // Cleanup polling on unmount
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
-
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) setVideoFiles(files);
   };
-
   const handleMusicSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) setMusicFile(files[0]);
   };
-
   const startPolling = (id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
@@ -88,13 +71,12 @@ export default function EditorPage() {
         const data = await res.json();
         setProgress(data.progress ?? 0);
         setStatusMsg(data.stage ?? data.status ?? '');
-
         if (data.status === 'completed' || data.status === 'done') {
           if (pollRef.current) clearInterval(pollRef.current);
           setStage('done');
           setProgress(100);
           // Mark trial as used after successful edit
-          if (!hasPaidPlan()) markTrialUsed();
+          // trial check removed)
         } else if (data.status === 'failed' || data.status === 'error') {
           if (pollRef.current) clearInterval(pollRef.current);
           setStage('error');
@@ -105,24 +87,16 @@ export default function EditorPage() {
       }
     }, 2000);
   };
-
   const handleSubmit = async () => {
     if (videoFiles.length === 0) { setError('Select at least one video'); return; }
-    // Check trial/plan status before allowing edit
-    if (!hasPaidPlan() && hasUsedFreeTrial()) {
-      setShowUpgradeModal(true);
-      return;
-    }
     setError('');
     setStage('uploading');
     setProgress(0);
     setStatusMsg('Uploading files…');
-
     try {
       const form = new FormData();
       videoFiles.forEach(f => form.append('files', f));
       if (musicFile) form.append('files', musicFile);
-
       const upRes = await fetch(`${API}/upload`, {
         method: 'POST',
         headers: HEADERS,
@@ -132,7 +106,6 @@ export default function EditorPage() {
       const upData = await upRes.json();
       const id = upData.job_id;
       setJobId(id);
-
       setStage('editing');
       setStatusMsg('Starting edit…');
       const editRes = await fetch(`${API}/edit`, {
@@ -141,7 +114,6 @@ export default function EditorPage() {
         body: JSON.stringify({ job_id: id, prompt, style, aspect_ratio: aspectRatio, transition_style: transition, export_quality: exportQuality, output_format: outputFormat }),
       });
       if (!editRes.ok) throw new Error(`Edit request failed (${editRes.status})`);
-
       setStage('polling');
       setStatusMsg('Processing…');
       startPolling(id);
@@ -150,7 +122,6 @@ export default function EditorPage() {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     }
   };
-
   const handleDownload = () => {
     if (!jobId) return;
     const a = document.createElement('a');
@@ -158,18 +129,14 @@ export default function EditorPage() {
     a.download = `tubee-edit-${jobId}.mp4`;
     a.click();
   };
-
   const handleReset = () => {
     setVideoFiles([]); setMusicFile(null); setPrompt(''); setStyle('Cinematic');
     setTransition('hard_cut'); setExportQuality('1080p'); setOutputFormat('reels');
     setStage('idle'); setProgress(0); setStatusMsg(''); setJobId(null); setError('');
     if (pollRef.current) clearInterval(pollRef.current);
   };
-
   const isWorking = stage === 'uploading' || stage === 'editing' || stage === 'polling';
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { user } = useAuth();
-
   return (
     <div style={{
       minHeight: '100vh', background: '#0A0F1E', color: '#fff',
@@ -216,7 +183,6 @@ export default function EditorPage() {
           🔍 Upscale
         </Link>
       </nav>
-
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#00AAFF' }}>
@@ -224,11 +190,9 @@ export default function EditorPage() {
         </h1>
         <p style={{ color: '#8899BB', fontSize: 14, marginTop: 4 }}>AI-powered video editing</p>
       </div>
-
       {/* Trial Banner & Upgrade Modal */}
-      <TrialBanner />
-      <UpgradeModal show={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
-
+      
+      
       {/* ── Video Select ─────────────────────────────────── */}
       <input
         ref={videoInputRef}
@@ -258,7 +222,6 @@ export default function EditorPage() {
           </span>
         )}
       </button>
-
       {/* ── Music Select ─────────────────────────────────── */}
       <input
         ref={musicInputRef}
@@ -282,7 +245,6 @@ export default function EditorPage() {
       >
         {musicFile ? `🎵 ${musicFile.name}` : '🎵 Add Music (optional)'}
       </button>
-
       {/* ── Prompt ───────────────────────────────────────── */}
       <textarea
         value={prompt}
@@ -298,7 +260,6 @@ export default function EditorPage() {
           fontFamily: 'inherit',
         }}
       />
-
       {/* ── Style Pills ──────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
         <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>STYLE</p>
@@ -326,7 +287,6 @@ export default function EditorPage() {
           ))}
         </div>
       </div>
-
       {/* ── Transitions ────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
         <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>TRANSITIONS</p>
@@ -354,7 +314,6 @@ export default function EditorPage() {
           ))}
         </div>
       </div>
-
       {/* ── Export Quality ─────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
         <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>EXPORT QUALITY</p>
@@ -393,7 +352,6 @@ export default function EditorPage() {
           ))}
         </div>
       </div>
-
       {/* ── Output Format ──────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
         <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>FORMAT</p>
@@ -421,7 +379,6 @@ export default function EditorPage() {
           ))}
         </div>
       </div>
-
       {/* ── Error ────────────────────────────────────────── */}
       {error && (
         <div style={{
@@ -431,7 +388,6 @@ export default function EditorPage() {
           ⚠️ {error}
         </div>
       )}
-
       {/* ── Progress ─────────────────────────────────────── */}
       {isWorking && (
         <div style={{ marginBottom: 20 }}>
@@ -455,7 +411,6 @@ export default function EditorPage() {
           </div>
         </div>
       )}
-
       {/* ── Done ─────────────────────────────────────────── */}
       {stage === 'done' && (
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -475,7 +430,6 @@ export default function EditorPage() {
           >
             ⬇️ Download Video
           </button>
-
           {/* Post-edit AI tools */}
           <div style={{
             display: 'flex', gap: 8, marginBottom: 12,
@@ -530,7 +484,6 @@ export default function EditorPage() {
               🎵 Generate Music
             </button>
           </div>
-
           <button
             onClick={handleReset}
             style={{
@@ -543,7 +496,6 @@ export default function EditorPage() {
           </button>
         </div>
       )}
-
       {/* ── Submit Button ────────────────────────────────── */}
       {stage !== 'done' && (
         <button

@@ -1,17 +1,10 @@
 'use client';
-
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { TrialBanner } from '@/components/TrialBanner';
-import { UpgradeModal } from '@/components/UpgradeModal';
 import { useAuth } from '@/components/AuthProvider';
-import { hasUsedFreeTrial, markTrialUsed, hasPaidPlan } from '@/lib/auth';
-
 const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
 const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
-
 type Stage = 'idle' | 'loading-jobs' | 'upscaling' | 'polling' | 'done' | 'error';
-
 interface Job {
   job_id: string;
   status: string;
@@ -19,7 +12,6 @@ interface Job {
   stage: string;
   created_at: string;
 }
-
 export default function UpscalePage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
@@ -29,16 +21,12 @@ export default function UpscalePage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [upscaleJobId, setUpscaleJobId] = useState<string | null>(null);
   const [error, setError] = useState('');
-
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { user } = useAuth();
-
   useEffect(() => {
     loadJobs();
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
-
   const loadJobs = async () => {
     setStage('loading-jobs');
     try {
@@ -51,7 +39,6 @@ export default function UpscalePage() {
       setStage('idle');
     }
   };
-
   const startPolling = (id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
@@ -60,12 +47,11 @@ export default function UpscalePage() {
         const data = await res.json();
         setProgress(data.progress ?? 0);
         setStatusMsg(data.stage ?? data.status ?? '');
-
         if (data.status === 'completed' || data.status === 'done') {
           if (pollRef.current) clearInterval(pollRef.current);
           setStage('done');
           setProgress(100);
-          if (!hasPaidPlan()) markTrialUsed();
+          // trial check removed)
         } else if (data.status === 'failed' || data.status === 'error') {
           if (pollRef.current) clearInterval(pollRef.current);
           setStage('error');
@@ -76,27 +62,23 @@ export default function UpscalePage() {
       }
     }, 3000);
   };
-
   const handleUpscale = async () => {
     if (!selectedJob) { setError('Select a video to upscale'); return; }
-    if (!hasPaidPlan() && hasUsedFreeTrial()) { setShowUpgradeModal(true); return; }
+    // trial check removed
     setError('');
     setStage('upscaling');
     setProgress(0);
     setStatusMsg('Starting upscale…');
-
     try {
       const res = await fetch(`${API}/upscale`, {
         method: 'POST',
         headers: { ...HEADERS, 'Content-Type': 'application/json' },
         body: JSON.stringify({ job_id: selectedJob, scale }),
       });
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Request failed' }));
         throw new Error(err.detail || `Request failed (${res.status})`);
       }
-
       const data = await res.json();
       setUpscaleJobId(data.job_id);
       setStage('polling');
@@ -107,7 +89,6 @@ export default function UpscalePage() {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     }
   };
-
   const handleDownload = () => {
     if (!upscaleJobId) return;
     const a = document.createElement('a');
@@ -115,7 +96,6 @@ export default function UpscalePage() {
     a.download = `tubee-upscaled-${upscaleJobId.slice(0, 8)}.mp4`;
     a.click();
   };
-
   const handleReset = () => {
     setSelectedJob(null); setScale(4);
     setStage('idle'); setProgress(0); setStatusMsg('');
@@ -123,9 +103,7 @@ export default function UpscalePage() {
     if (pollRef.current) clearInterval(pollRef.current);
     loadJobs();
   };
-
   const isWorking = stage === 'upscaling' || stage === 'polling';
-
   return (
     <div style={{
       minHeight: '100vh', background: '#0A0F1E', color: '#fff',
@@ -172,7 +150,6 @@ export default function UpscalePage() {
           🔍 Upscale
         </div>
       </nav>
-
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 28 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#00AAFF' }}>
@@ -182,11 +159,9 @@ export default function UpscalePage() {
           Upscale your videos to 4K with AI • No API key needed
         </p>
       </div>
-
       {/* Trial Banner & Upgrade Modal */}
-      <TrialBanner />
-      <UpgradeModal show={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
-
+      
+      
       {/* ── Select Video ─────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
         <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>SELECT A COMPLETED VIDEO</p>
@@ -224,7 +199,6 @@ export default function UpscalePage() {
           </div>
         )}
       </div>
-
       {/* ── Scale ────────────────────────────────────────── */}
       <div style={{ marginBottom: 24 }}>
         <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>UPSCALE FACTOR</p>
@@ -252,7 +226,6 @@ export default function UpscalePage() {
           ))}
         </div>
       </div>
-
       {/* ── Error ────────────────────────────────────────── */}
       {error && (
         <div style={{
@@ -262,7 +235,6 @@ export default function UpscalePage() {
           ⚠️ {error}
         </div>
       )}
-
       {/* ── Progress ─────────────────────────────────────── */}
       {isWorking && (
         <div style={{ marginBottom: 20 }}>
@@ -285,7 +257,6 @@ export default function UpscalePage() {
           </div>
         </div>
       )}
-
       {/* ── Done ─────────────────────────────────────────── */}
       {stage === 'done' && (
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -317,7 +288,6 @@ export default function UpscalePage() {
           </button>
         </div>
       )}
-
       {/* ── Submit Button ────────────────────────────────── */}
       {stage !== 'done' && (
         <button

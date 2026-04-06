@@ -1,15 +1,9 @@
 'use client';
-
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { TrialBanner } from '@/components/TrialBanner';
-import { UpgradeModal } from '@/components/UpgradeModal';
 import { useAuth } from '@/components/AuthProvider';
-import { hasUsedFreeTrial, markTrialUsed, hasPaidPlan } from '@/lib/auth';
-
 const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
 const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
-
 const STYLES = [
   { label: 'Social Reel', value: 'social_reel', icon: '📱', desc: 'Animated text, color grade, vertical reel' },
   { label: 'Highlight', value: 'highlight', icon: '⚡', desc: 'Fast cuts with beat markers' },
@@ -17,9 +11,7 @@ const STYLES = [
   { label: 'Testimonial', value: 'testimonial', icon: '🗣️', desc: 'Talking head with animated captions' },
   { label: 'Before/After', value: 'before_after', icon: '↔️', desc: 'Split screen comparison' },
 ];
-
 type Stage = 'idle' | 'uploading' | 'generating' | 'polling' | 'done' | 'error';
-
 export default function VibePage() {
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
   const [musicFile, setMusicFile] = useState<File | null>(null);
@@ -34,34 +26,28 @@ export default function VibePage() {
   const [vibeJobId, setVibeJobId] = useState('');
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [codeExpanded, setCodeExpanded] = useState(false);
-
   const videoInputRef = useRef<HTMLInputElement>(null);
   const musicInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
-
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
-
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setVideoFiles(Array.from(e.target.files));
     }
   };
-
   const handleMusicSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       setMusicFile(e.target.files[0]);
     }
   };
-
   const removeFile = (idx: number) => {
     setVideoFiles((prev) => prev.filter((_, i) => i !== idx));
   };
-
   const handleVibeEdit = async () => {
     if (videoFiles.length === 0) {
       setError('Upload at least one video clip');
@@ -71,45 +57,35 @@ export default function VibePage() {
       setError('Describe your video first');
       return;
     }
-    if (!hasPaidPlan() && hasUsedFreeTrial()) {
-      setShowUpgradeModal(true);
-      return;
-    }
-
+    // trial check removed
     setError('');
     setStage('uploading');
     setProgress(5);
     setStatusText('Uploading clips...');
     setGeneratedCode(null);
-
     try {
       // Step 1: Upload files
       const formData = new FormData();
       videoFiles.forEach((f) => formData.append('files', f));
       if (musicFile) formData.append('files', musicFile);
-
       const uploadRes = await fetch(`${API}/upload`, {
         method: 'POST',
         headers: HEADERS,
         body: formData,
       });
-
       if (!uploadRes.ok) {
         const err = await uploadRes.json().catch(() => ({ detail: 'Upload failed' }));
         throw new Error(err.detail || 'Upload failed');
       }
-
       const uploadData = await uploadRes.json();
       const uploadJobId = uploadData.job_id;
       setJobId(uploadJobId);
       setProgress(20);
       setStatusText('Clips uploaded');
-
       // Step 2: Submit vibe edit
       setStage('generating');
       setStatusText('AI is generating your video...');
       setProgress(25);
-
       const vibeRes = await fetch(`${API}/vibe-edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...HEADERS },
@@ -120,34 +96,28 @@ export default function VibePage() {
           duration,
         }),
       });
-
       if (!vibeRes.ok) {
         const err = await vibeRes.json().catch(() => ({ detail: 'Vibe edit failed' }));
         throw new Error(err.detail || 'Vibe edit failed');
       }
-
       const vibeData = await vibeRes.json();
       const vJobId = vibeData.job_id;
       setVibeJobId(vJobId);
       setStage('polling');
-
       // Step 3: Poll for progress
       pollRef.current = setInterval(async () => {
         try {
           const statusRes = await fetch(`${API}/status/${vJobId}`, { headers: HEADERS });
           if (!statusRes.ok) return;
           const status = await statusRes.json();
-
           setProgress(status.progress || 30);
           setStatusText(status.stage || 'Processing...');
-
           if (status.status === 'done') {
             if (pollRef.current) clearInterval(pollRef.current);
             setStage('done');
             setProgress(100);
             setStatusText('Your vibe edit is ready!');
-            if (!hasPaidPlan()) markTrialUsed();
-
+            // trial check removed)
             // Fetch generated code
             try {
               const codeRes = await fetch(`${API}/vibe-code/${vJobId}`, { headers: HEADERS });
@@ -172,7 +142,6 @@ export default function VibePage() {
       setError(err.message || 'Something went wrong');
     }
   };
-
   const reset = () => {
     if (pollRef.current) clearInterval(pollRef.current);
     setVideoFiles([]);
@@ -189,11 +158,8 @@ export default function VibePage() {
     setGeneratedCode(null);
     setCodeExpanded(false);
   };
-
   const isProcessing = stage === 'uploading' || stage === 'generating' || stage === 'polling';
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { user } = useAuth();
-
   return (
     <main className="min-h-screen bg-dark text-white">
       {/* Nav */}
@@ -225,7 +191,6 @@ export default function VibePage() {
           </div>
         </div>
       </nav>
-
       <div className="pt-24 pb-16 px-6 max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-10">
@@ -236,11 +201,9 @@ export default function VibePage() {
             Describe your video in natural language. AI writes the code. Remotion renders it. Magic.
           </p>
         </div>
-
         {/* Trial Banner & Upgrade Modal */}
-        <TrialBanner />
-        <UpgradeModal show={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
-
+        
+        
         {stage === 'done' ? (
           /* ── Result ─────────────────────────────────────────── */
           <div className="space-y-6">
@@ -263,7 +226,6 @@ export default function VibePage() {
                 </button>
               </div>
             </div>
-
             {/* Generated Code */}
             {generatedCode && (
               <div className="bg-card border border-[rgba(0,170,255,0.15)] rounded-2xl overflow-hidden">
@@ -313,7 +275,6 @@ export default function VibePage() {
                 className="hidden"
                 onChange={handleVideoSelect}
               />
-
               {videoFiles.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {videoFiles.map((f, i) => (
@@ -332,7 +293,6 @@ export default function VibePage() {
                   ))}
                 </div>
               )}
-
               {/* Optional music */}
               <div className="mt-4 flex items-center gap-3">
                 <button
@@ -358,7 +318,6 @@ export default function VibePage() {
                 onChange={handleMusicSelect}
               />
             </div>
-
             {/* Prompt */}
             <div className="bg-card border border-[rgba(0,170,255,0.15)] rounded-2xl p-6">
               <h3 className="font-semibold mb-4 text-lg">✍️ Describe Your Video</h3>
@@ -370,7 +329,6 @@ export default function VibePage() {
                 className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl p-4 text-white placeholder-white/30 resize-none focus:outline-none focus:border-accent/50 transition-all"
               />
             </div>
-
             {/* Style Selector */}
             <div className="bg-card border border-[rgba(0,170,255,0.15)] rounded-2xl p-6">
               <h3 className="font-semibold mb-4 text-lg">🎨 Style</h3>
@@ -392,7 +350,6 @@ export default function VibePage() {
                 ))}
               </div>
             </div>
-
             {/* Duration */}
             <div className="bg-card border border-[rgba(0,170,255,0.15)] rounded-2xl p-6">
               <h3 className="font-semibold mb-4 text-lg">⏱️ Duration</h3>
@@ -412,14 +369,12 @@ export default function VibePage() {
                 ))}
               </div>
             </div>
-
             {/* Error */}
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
                 ⚠️ {error}
               </div>
             )}
-
             {/* Progress */}
             {isProcessing && (
               <div className="bg-card border border-accent/30 rounded-2xl p-6">
@@ -435,7 +390,6 @@ export default function VibePage() {
                 </div>
               </div>
             )}
-
             {/* Submit Button */}
             <button
               onClick={handleVibeEdit}

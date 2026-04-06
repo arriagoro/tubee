@@ -1,27 +1,19 @@
 'use client';
-
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { TrialBanner } from '@/components/TrialBanner';
-import { UpgradeModal } from '@/components/UpgradeModal';
 import { useAuth } from '@/components/AuthProvider';
-import { hasUsedFreeTrial, markTrialUsed, hasPaidPlan } from '@/lib/auth';
-
 const API = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
 const HEADERS = { 'ngrok-skip-browser-warning': 'true' };
-
 const DURATIONS = [
   { label: '4s', value: 4, desc: 'Quick clip' },
   { label: '8s', value: 8, desc: 'Standard' },
   { label: '16s', value: 16, desc: 'Extended' },
 ];
-
 const ASPECT_RATIOS = [
   { label: '9:16', icon: '📱', desc: 'Reels/TikTok' },
   { label: '16:9', icon: '🖥️', desc: 'YouTube' },
   { label: '1:1', icon: '⬜', desc: 'Square' },
 ];
-
 const VIDEO_STYLES = [
   { label: '⭐ Veo 3.1', value: 'cinematic', icon: '🎬', badge: 'Best Quality' },
   { label: 'Action', value: 'action', icon: '⚡', badge: null },
@@ -29,7 +21,6 @@ const VIDEO_STYLES = [
   { label: 'Music Video', value: 'music_video', icon: '🎵', badge: null },
   { label: 'Documentary', value: 'documentary', icon: '🎥', badge: null },
 ];
-
 const IMAGE_STYLES = [
   { label: 'Photorealistic', value: 'photorealistic' },
   { label: 'Digital Art', value: 'digital art' },
@@ -37,13 +28,10 @@ const IMAGE_STYLES = [
   { label: 'Anime', value: 'anime' },
   { label: 'Watercolor', value: 'watercolor' },
 ];
-
 type Stage = 'idle' | 'generating' | 'polling' | 'done' | 'error';
 type Tab = 'video' | 'image' | 'music';
-
 export default function GeneratePage() {
   const [activeTab, setActiveTab] = useState<Tab>('video');
-
   // Video state
   const [prompt, setPrompt] = useState('');
   const [duration, setDuration] = useState(8);
@@ -54,7 +42,6 @@ export default function GeneratePage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState('');
-
   // Image state
   const [imagePrompt, setImagePrompt] = useState('');
   const [imageStyle, setImageStyle] = useState('photorealistic');
@@ -64,7 +51,6 @@ export default function GeneratePage() {
   const [imageStatusMsg, setImageStatusMsg] = useState('');
   const [imageJobId, setImageJobId] = useState<string | null>(null);
   const [imageError, setImageError] = useState('');
-
   // Music state
   const [musicPrompt, setMusicPrompt] = useState('');
   const [musicDuration, setMusicDuration] = useState(30);
@@ -73,36 +59,29 @@ export default function GeneratePage() {
   const [musicStatusMsg, setMusicStatusMsg] = useState('');
   const [musicJobId, setMusicJobId] = useState<string | null>(null);
   const [musicError, setMusicError] = useState('');
-
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { user } = useAuth();
-
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
-
   const startPolling = (id: string, type: Tab) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
         const res = await fetch(`${API}/status/${id}`, { headers: HEADERS });
         const data = await res.json();
-
         const setters = {
           video: { setProgress, setStatusMsg, setStage },
           image: { setProgress: setImageProgress, setStatusMsg: setImageStatusMsg, setStage: setImageStage },
           music: { setProgress: setMusicProgress, setStatusMsg: setMusicStatusMsg, setStage: setMusicStage },
         }[type];
-
         setters.setProgress(data.progress ?? 0);
         setters.setStatusMsg(data.stage ?? data.status ?? '');
-
         if (data.status === 'completed' || data.status === 'done') {
           if (pollRef.current) clearInterval(pollRef.current);
           setters.setStage('done');
           setters.setProgress(100);
-          if (!hasPaidPlan()) markTrialUsed();
+          // trial check removed)
         } else if (data.status === 'failed' || data.status === 'error') {
           if (pollRef.current) clearInterval(pollRef.current);
           setters.setStage('error');
@@ -115,28 +94,24 @@ export default function GeneratePage() {
       }
     }, 3000);
   };
-
   // Video generation
   const handleGenerate = async () => {
     if (!prompt.trim()) { setError('Enter a prompt describing the video'); return; }
-    if (!hasPaidPlan() && hasUsedFreeTrial()) { setShowUpgradeModal(true); return; }
+    // trial check removed
     setError('');
     setStage('generating');
     setProgress(0);
     setStatusMsg('Submitting to Veo 3.1…');
-
     try {
       const res = await fetch(`${API}/generate`, {
         method: 'POST',
         headers: { ...HEADERS, 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, duration, style, aspect_ratio: aspectRatio }),
       });
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Request failed' }));
         throw new Error(err.detail || `Request failed (${res.status})`);
       }
-
       const data = await res.json();
       setJobId(data.job_id);
       setStage('polling');
@@ -147,28 +122,24 @@ export default function GeneratePage() {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     }
   };
-
   // Image generation
   const handleGenerateImage = async () => {
     if (!imagePrompt.trim()) { setImageError('Enter a prompt describing the image'); return; }
-    if (!hasPaidPlan() && hasUsedFreeTrial()) { setShowUpgradeModal(true); return; }
+    // trial check removed
     setImageError('');
     setImageStage('generating');
     setImageProgress(0);
     setImageStatusMsg('Submitting to Imagen 4.0…');
-
     try {
       const res = await fetch(`${API}/generate-image`, {
         method: 'POST',
         headers: { ...HEADERS, 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: imagePrompt, style: imageStyle, aspect_ratio: imageAspect }),
       });
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Request failed' }));
         throw new Error(err.detail || `Request failed (${res.status})`);
       }
-
       const data = await res.json();
       setImageJobId(data.job_id);
       setImageStage('polling');
@@ -179,28 +150,24 @@ export default function GeneratePage() {
       setImageError(err instanceof Error ? err.message : 'Something went wrong');
     }
   };
-
   // Music generation
   const handleGenerateMusic = async () => {
     if (!musicPrompt.trim()) { setMusicError('Enter a prompt describing the music'); return; }
-    if (!hasPaidPlan() && hasUsedFreeTrial()) { setShowUpgradeModal(true); return; }
+    // trial check removed
     setMusicError('');
     setMusicStage('generating');
     setMusicProgress(0);
     setMusicStatusMsg('Submitting to Lyria 3 Pro…');
-
     try {
       const res = await fetch(`${API}/generate-music`, {
         method: 'POST',
         headers: { ...HEADERS, 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: musicPrompt, duration: musicDuration }),
       });
-
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: 'Request failed' }));
         throw new Error(err.detail || `Request failed (${res.status})`);
       }
-
       const data = await res.json();
       setMusicJobId(data.job_id);
       setMusicStage('polling');
@@ -211,7 +178,6 @@ export default function GeneratePage() {
       setMusicError(err instanceof Error ? err.message : 'Something went wrong');
     }
   };
-
   const handleDownload = (id: string | null, prefix: string) => {
     if (!id) return;
     const a = document.createElement('a');
@@ -219,11 +185,9 @@ export default function GeneratePage() {
     a.download = `tubee-${prefix}-${id.slice(0, 8)}`;
     a.click();
   };
-
   const isVideoWorking = stage === 'generating' || stage === 'polling';
   const isImageWorking = imageStage === 'generating' || imageStage === 'polling';
   const isMusicWorking = musicStage === 'generating' || musicStage === 'polling';
-
   const tabStyle = (active: boolean) => ({
     flex: 1, padding: '10px 4px', textAlign: 'center' as const, border: 'none',
     background: active ? 'rgba(0,170,255,0.15)' : 'transparent',
@@ -231,7 +195,6 @@ export default function GeneratePage() {
     fontSize: 14, cursor: 'pointer', borderBottom: active ? '2px solid #00AAFF' : '2px solid transparent',
     transition: 'all 0.15s',
   });
-
   return (
     <div style={{
       minHeight: '100vh', background: '#0A0F1E', color: '#fff',
@@ -278,7 +241,6 @@ export default function GeneratePage() {
           🔍 Upscale
         </Link>
       </nav>
-
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 20 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: '#00AAFF' }}>
@@ -288,11 +250,9 @@ export default function GeneratePage() {
           Powered by Google Veo 3.1, Imagen 4.0 & Lyria 3 Pro
         </p>
       </div>
-
       {/* Trial Banner & Upgrade Modal */}
-      <TrialBanner />
-      <UpgradeModal show={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
-
+      
+      
       {/* Sub-tabs: Video | Image | Music */}
       <div style={{
         display: 'flex', gap: 0, marginBottom: 24, borderRadius: 10,
@@ -308,7 +268,6 @@ export default function GeneratePage() {
           🎵 Music
         </button>
       </div>
-
       {/* ══════════════════════════════════════════════════ */}
       {/* VIDEO TAB */}
       {/* ══════════════════════════════════════════════════ */}
@@ -331,7 +290,6 @@ export default function GeneratePage() {
               + Kling, Runway, Luma fallbacks
             </span>
           </div>
-
           <textarea
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
@@ -346,7 +304,6 @@ export default function GeneratePage() {
               fontFamily: 'inherit', lineHeight: 1.5,
             }}
           />
-
           {/* Duration */}
           <div style={{ marginBottom: 20 }}>
             <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>DURATION</p>
@@ -371,7 +328,6 @@ export default function GeneratePage() {
               ))}
             </div>
           </div>
-
           {/* Aspect Ratio */}
           <div style={{ marginBottom: 20 }}>
             <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>FORMAT</p>
@@ -397,7 +353,6 @@ export default function GeneratePage() {
               ))}
             </div>
           </div>
-
           {/* Style */}
           <div style={{ marginBottom: 24 }}>
             <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>STYLE</p>
@@ -436,7 +391,6 @@ export default function GeneratePage() {
               ))}
             </div>
           </div>
-
           {/* Error */}
           {error && (
             <div style={{
@@ -446,7 +400,6 @@ export default function GeneratePage() {
               ⚠️ {error}
             </div>
           )}
-
           {/* Progress */}
           {isVideoWorking && (
             <div style={{ marginBottom: 20 }}>
@@ -472,7 +425,6 @@ export default function GeneratePage() {
               </p>
             </div>
           )}
-
           {/* Done */}
           {stage === 'done' && (
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -507,7 +459,6 @@ export default function GeneratePage() {
               </button>
             </div>
           )}
-
           {/* Submit */}
           {stage !== 'done' && (
             <button
@@ -529,7 +480,6 @@ export default function GeneratePage() {
           )}
         </>
       )}
-
       {/* ══════════════════════════════════════════════════ */}
       {/* IMAGE TAB */}
       {/* ══════════════════════════════════════════════════ */}
@@ -549,7 +499,6 @@ export default function GeneratePage() {
               borderRadius: 6, background: 'rgba(0,170,255,0.2)', color: '#00D4FF',
             }}>NEW</span>
           </div>
-
           <textarea
             value={imagePrompt}
             onChange={e => setImagePrompt(e.target.value)}
@@ -564,7 +513,6 @@ export default function GeneratePage() {
               fontFamily: 'inherit', lineHeight: 1.5,
             }}
           />
-
           {/* Image Style */}
           <div style={{ marginBottom: 20 }}>
             <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>STYLE</p>
@@ -592,7 +540,6 @@ export default function GeneratePage() {
               ))}
             </div>
           </div>
-
           {/* Image Aspect Ratio */}
           <div style={{ marginBottom: 24 }}>
             <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>FORMAT</p>
@@ -618,7 +565,6 @@ export default function GeneratePage() {
               ))}
             </div>
           </div>
-
           {/* Error */}
           {imageError && (
             <div style={{
@@ -628,7 +574,6 @@ export default function GeneratePage() {
               ⚠️ {imageError}
             </div>
           )}
-
           {/* Progress */}
           {isImageWorking && (
             <div style={{ marginBottom: 20 }}>
@@ -651,7 +596,6 @@ export default function GeneratePage() {
               </div>
             </div>
           )}
-
           {/* Done */}
           {imageStage === 'done' && (
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -686,7 +630,6 @@ export default function GeneratePage() {
               </button>
             </div>
           )}
-
           {/* Submit */}
           {imageStage !== 'done' && (
             <button
@@ -708,7 +651,6 @@ export default function GeneratePage() {
           )}
         </>
       )}
-
       {/* ══════════════════════════════════════════════════ */}
       {/* MUSIC TAB */}
       {/* ══════════════════════════════════════════════════ */}
@@ -728,7 +670,6 @@ export default function GeneratePage() {
               borderRadius: 6, background: 'rgba(0,170,255,0.2)', color: '#00D4FF',
             }}>NEW</span>
           </div>
-
           <textarea
             value={musicPrompt}
             onChange={e => setMusicPrompt(e.target.value)}
@@ -743,7 +684,6 @@ export default function GeneratePage() {
               fontFamily: 'inherit', lineHeight: 1.5,
             }}
           />
-
           {/* Duration */}
           <div style={{ marginBottom: 24 }}>
             <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>DURATION</p>
@@ -767,7 +707,6 @@ export default function GeneratePage() {
               ))}
             </div>
           </div>
-
           {/* Error */}
           {musicError && (
             <div style={{
@@ -777,7 +716,6 @@ export default function GeneratePage() {
               ⚠️ {musicError}
             </div>
           )}
-
           {/* Progress */}
           {isMusicWorking && (
             <div style={{ marginBottom: 20 }}>
@@ -800,7 +738,6 @@ export default function GeneratePage() {
               </div>
             </div>
           )}
-
           {/* Done */}
           {musicStage === 'done' && (
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -835,7 +772,6 @@ export default function GeneratePage() {
               </button>
             </div>
           )}
-
           {/* Submit */}
           {musicStage !== 'done' && (
             <button
