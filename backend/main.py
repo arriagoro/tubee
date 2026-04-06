@@ -14,6 +14,7 @@ Run with:
   uvicorn main:app --reload --port 8000
 """
 
+import setup_ffmpeg  # Configure FFmpeg path
 import os
 import uuid
 import json
