@@ -334,6 +334,295 @@ export default function GeneratePage() {
       {/* ══════════════════════════════════════════════════ */}
       {activeTab === 'video' && (
         <>
+          {/* Video Mode Toggle: Text to Video | Image to Video */}
+          <div style={{
+            display: 'flex', gap: 0, marginBottom: 16, borderRadius: 10,
+            overflow: 'hidden', border: '1px solid rgba(0,170,255,0.12)',
+          }}>
+            <button
+              onClick={() => setVideoMode('text-to-video')}
+              style={{
+                flex: 1, padding: '10px 4px', textAlign: 'center', border: 'none',
+                background: videoMode === 'text-to-video' ? 'rgba(0,170,255,0.15)' : 'transparent',
+                color: videoMode === 'text-to-video' ? '#00AAFF' : '#8899BB',
+                fontWeight: videoMode === 'text-to-video' ? 700 : 500,
+                fontSize: 14, cursor: 'pointer',
+                borderBottom: videoMode === 'text-to-video' ? '2px solid #00AAFF' : '2px solid transparent',
+                transition: 'all 0.15s',
+              }}
+            >
+              ✍️ Text to Video
+            </button>
+            <button
+              onClick={() => setVideoMode('image-to-video')}
+              style={{
+                flex: 1, padding: '10px 4px', textAlign: 'center', border: 'none',
+                background: videoMode === 'image-to-video' ? 'rgba(0,170,255,0.15)' : 'transparent',
+                color: videoMode === 'image-to-video' ? '#00AAFF' : '#8899BB',
+                fontWeight: videoMode === 'image-to-video' ? 700 : 500,
+                fontSize: 14, cursor: 'pointer',
+                borderBottom: videoMode === 'image-to-video' ? '2px solid #00AAFF' : '2px solid transparent',
+                transition: 'all 0.15s',
+              }}
+            >
+              📸 Image to Video
+            </button>
+          </div>
+
+          {/* ── IMAGE TO VIDEO MODE ── */}
+          {videoMode === 'image-to-video' && (
+            <>
+              {/* Provider badge */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                marginBottom: 16, padding: '10px 14px',
+                background: 'rgba(0,170,255,0.08)', borderRadius: 10,
+                border: '1px solid rgba(0,170,255,0.2)',
+              }}>
+                <span style={{ fontSize: 18 }}>📸</span>
+                <span style={{ color: '#00AAFF', fontWeight: 700, fontSize: 15 }}>Kling AI</span>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '2px 8px',
+                  borderRadius: 6, background: 'rgba(0,170,255,0.2)', color: '#00D4FF',
+                }}>Image to Video</span>
+              </div>
+
+              {/* Image Upload */}
+              <input
+                type="file"
+                ref={i2vFileRef}
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: 'none' }}
+                onChange={handleI2vImageUpload}
+              />
+              <button
+                onClick={() => i2vFileRef.current?.click()}
+                disabled={isI2vWorking}
+                style={{
+                  width: '100%', padding: i2vPreview ? '12px' : '40px 16px',
+                  marginBottom: 16,
+                  background: '#0D1526', border: '2px dashed rgba(0,170,255,0.3)',
+                  borderRadius: 12, color: '#8899BB', fontSize: 16,
+                  cursor: isI2vWorking ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s', textAlign: 'center',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                }}
+              >
+                {i2vPreview ? (
+                  <>
+                    <img
+                      src={i2vPreview}
+                      alt="Upload preview"
+                      style={{
+                        maxWidth: '100%', maxHeight: 200, borderRadius: 8,
+                        objectFit: 'contain',
+                      }}
+                    />
+                    <span style={{ fontSize: 13, color: '#556677' }}>
+                      {i2vImage?.name} — tap to change
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 32 }}>📸</span>
+                    <span>Upload Image</span>
+                    <span style={{ fontSize: 12, color: '#556677' }}>JPG, PNG, or WebP</span>
+                  </>
+                )}
+              </button>
+
+              {/* Prompt */}
+              <textarea
+                value={i2vPrompt}
+                onChange={e => setI2vPrompt(e.target.value)}
+                placeholder="Describe how to animate this image…&#10;&#10;e.g. Slow zoom in, clouds moving in the background, gentle camera pan to the right"
+                disabled={isI2vWorking}
+                rows={3}
+                style={{
+                  width: '100%', padding: 16, marginBottom: 20,
+                  background: '#0D1526', border: '1px solid rgba(0,170,255,0.15)', borderRadius: 12,
+                  color: '#fff', fontSize: 16, resize: 'vertical',
+                  outline: 'none', boxSizing: 'border-box',
+                  fontFamily: 'inherit', lineHeight: 1.5,
+                }}
+              />
+
+              {/* Duration */}
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>DURATION</p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[{ label: '5s', value: 5, desc: 'Standard' }, { label: '10s', value: 10, desc: 'Extended' }].map(d => (
+                    <button
+                      key={d.value}
+                      onClick={() => setI2vDuration(d.value)}
+                      disabled={isI2vWorking}
+                      style={{
+                        flex: 1, padding: '12px 8px', borderRadius: 12, border: 'none',
+                        background: i2vDuration === d.value ? '#00AAFF' : '#0D1526',
+                        color: i2vDuration === d.value ? '#fff' : '#8899BB',
+                        fontSize: 15, fontWeight: i2vDuration === d.value ? 700 : 500,
+                        cursor: isI2vWorking ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <div>{d.label}</div>
+                      <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{d.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Format */}
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>FORMAT</p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {ASPECT_RATIOS.map(ar => (
+                    <button
+                      key={ar.label}
+                      onClick={() => setI2vAspect(ar.label)}
+                      disabled={isI2vWorking}
+                      style={{
+                        flex: 1, padding: '12px 8px', borderRadius: 12, border: 'none',
+                        background: i2vAspect === ar.label ? '#00AAFF' : '#0D1526',
+                        color: i2vAspect === ar.label ? '#fff' : '#8899BB',
+                        fontSize: 14, fontWeight: i2vAspect === ar.label ? 700 : 500,
+                        cursor: isI2vWorking ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <div style={{ fontSize: 20 }}>{ar.icon}</div>
+                      <div>{ar.label}</div>
+                      <div style={{ fontSize: 11, opacity: 0.7 }}>{ar.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Style */}
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 8, fontWeight: 500 }}>STYLE</p>
+                <div style={{
+                  display: 'flex', gap: 8, overflowX: 'auto',
+                  paddingBottom: 8, WebkitOverflowScrolling: 'touch',
+                }}>
+                  {VIDEO_STYLES.map(s => (
+                    <button
+                      key={s.value}
+                      onClick={() => setI2vStyle(s.value)}
+                      disabled={isI2vWorking}
+                      style={{
+                        flexShrink: 0, padding: '10px 18px',
+                        borderRadius: 99, border: 'none',
+                        background: i2vStyle === s.value ? '#00AAFF' : '#0D1526',
+                        color: i2vStyle === s.value ? '#fff' : '#8899BB',
+                        fontSize: 14, fontWeight: i2vStyle === s.value ? 700 : 500,
+                        cursor: isI2vWorking ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      {s.icon} {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Error */}
+              {i2vError && (
+                <div style={{
+                  background: '#2a0a0a', border: '1px solid #f44', borderRadius: 12,
+                  padding: 14, marginBottom: 16, color: '#f88', fontSize: 14,
+                }}>
+                  ⚠️ {i2vError}
+                </div>
+              )}
+
+              {/* Progress */}
+              {isI2vWorking && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between',
+                    marginBottom: 8, fontSize: 14,
+                  }}>
+                    <span style={{ color: '#00AAFF' }}>{i2vStatusMsg}</span>
+                    <span style={{ color: '#8899BB' }}>{i2vProgress}%</span>
+                  </div>
+                  <div style={{
+                    width: '100%', height: 8, background: '#0D1526', borderRadius: 99,
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      width: `${Math.max(i2vProgress, 3)}%`, height: '100%',
+                      background: 'linear-gradient(90deg, #00AAFF, #00D4FF)',
+                      borderRadius: 99, transition: 'width 0.5s ease',
+                    }} />
+                  </div>
+                  <p style={{ color: '#4a5a7a', fontSize: 12, marginTop: 8, textAlign: 'center' }}>
+                    Image-to-video generation can take 1-5 minutes
+                  </p>
+                </div>
+              )}
+
+              {/* Done */}
+              {i2vStage === 'done' && (
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                  <p style={{ fontSize: 20, color: '#00AAFF', fontWeight: 700, marginBottom: 16 }}>
+                    🎉 Your video is ready!
+                  </p>
+                  <button
+                    onClick={() => handleDownload(i2vJobId, 'i2v-video')}
+                    style={{
+                      width: '100%', padding: 18,
+                      background: 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+                      color: '#fff', border: 'none', borderRadius: 14,
+                      fontSize: 18, fontWeight: 700, cursor: 'pointer',
+                      marginBottom: 12,
+                      boxShadow: '0 0 20px rgba(0,170,255,0.3)',
+                    }}
+                  >
+                    ⬇️ Download Video
+                  </button>
+                  <button
+                    onClick={() => {
+                      setI2vImage(null); setI2vPreview(null); setI2vPrompt('');
+                      setI2vStage('idle'); setI2vProgress(0);
+                      setI2vStatusMsg(''); setI2vJobId(null); setI2vError('');
+                    }}
+                    style={{
+                      width: '100%', padding: 14, background: 'transparent',
+                      color: '#8899BB', border: '1px solid rgba(0,170,255,0.15)', borderRadius: 14,
+                      fontSize: 15, cursor: 'pointer',
+                    }}
+                  >
+                    Generate Another
+                  </button>
+                </div>
+              )}
+
+              {/* Submit */}
+              {i2vStage !== 'done' && (
+                <button
+                  onClick={handleGenerateI2v}
+                  disabled={isI2vWorking || !i2vImage}
+                  style={{
+                    width: '100%', padding: 20,
+                    background: isI2vWorking || !i2vImage ? '#1a2540' : 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+                    color: isI2vWorking || !i2vImage ? '#4a5a7a' : '#fff',
+                    border: 'none', borderRadius: 14,
+                    fontSize: 20, fontWeight: 700,
+                    cursor: isI2vWorking || !i2vImage ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: !isI2vWorking && i2vImage ? '0 0 20px rgba(0,170,255,0.3)' : 'none',
+                  }}
+                >
+                  {isI2vWorking ? '⏳ Generating with Kling AI…' : '✨ Generate Video'}
+                </button>
+              )}
+            </>
+          )}
+
+          {/* ── TEXT TO VIDEO MODE ── */}
+          {videoMode === 'text-to-video' && (<>
           {/* Provider badge */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
@@ -539,6 +828,7 @@ export default function GeneratePage() {
               {isVideoWorking ? '⏳ Generating with Veo 3.1…' : '✨ Generate Video'}
             </button>
           )}
+          </>)}
         </>
       )}
       {/* ══════════════════════════════════════════════════ */}
