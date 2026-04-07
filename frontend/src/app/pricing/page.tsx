@@ -18,7 +18,7 @@ const plans = [
       'Beat sync to music',
     ],
     cta: 'Get Started',
-    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/l7PQ5?redirect=https://tubee.itsthatseason.com/editor',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/3wg3n?redirect=https://tubee.itsthatseason.com/editor',
     highlighted: false,
   },
   {
@@ -37,7 +37,7 @@ const plans = [
       
     ],
     cta: 'Get Started',
-    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/oyPRj?redirect=https://tubee.itsthatseason.com/editor',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/4Lj20?redirect=https://tubee.itsthatseason.com/editor',
     highlighted: true,
   },
 ];
