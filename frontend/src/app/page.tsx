@@ -51,7 +51,7 @@ const pricing = [
       'Beat-sync to music',
     ],
     cta: 'Get Starter Access',
-    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/7XBoy',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/l7PQ5',
     highlighted: false,
   },
   {

@@ -18,7 +18,7 @@ const plans = [
       'Beat sync to music',
     ],
     cta: 'Get Started',
-    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/7XBoy?redirect=https://tubee.itsthatseason.com/editor',
+    href: 'https://www.fanbasis.com/agency-checkout/Dicipline/l7PQ5?redirect=https://tubee.itsthatseason.com/editor',
     highlighted: false,
   },
   {
