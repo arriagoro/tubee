@@ -7,7 +7,7 @@ import { grantFreeTrial } from '@/lib/auth';
 const plans = [
   {
     name: 'Starter',
-    trial: '1-day free trial',
+    
     price: 29,
     badge: null,
     features: [
@@ -17,7 +17,7 @@ const plans = [
       'Instagram Reel format',
       'Beat sync to music',
     ],
-    cta: 'Start Free Trial',
+    cta: 'Get Started',
     href: 'https://www.fanbasis.com/agency-checkout/Dicipline/7XBoy?redirect=https://tubee.itsthatseason.com/editor',
     highlighted: false,
   },
@@ -34,9 +34,9 @@ const plans = [
       'Vibe Edit (Remotion)',
       'DaVinci Resolve export',
       'Priority processing',
-      '3-day free trial',
+      
     ],
-    cta: 'Start Free Trial',
+    cta: 'Get Started',
     href: 'https://www.fanbasis.com/agency-checkout/Dicipline/oyPRj?redirect=https://tubee.itsthatseason.com/editor',
     highlighted: true,
   },

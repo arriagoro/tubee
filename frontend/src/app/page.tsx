@@ -66,7 +66,7 @@ const pricing = [
       'Priority processing',
       'Everything in Starter',
     ],
-    cta: 'Start Free Trial',
+    cta: 'Get Started',
     href: 'https://www.fanbasis.com/agency-checkout/Dicipline/oyPRj',
     highlighted: true,
   },
@@ -98,13 +98,13 @@ export default function Home() {
               href="/auth/signup"
               className="bg-gradient-to-r from-[#00AAFF] to-[#00D4FF] text-white font-bold text-lg px-8 py-4 rounded-2xl hover:shadow-[0_0_40px_rgba(0,170,255,0.3)] hover:scale-[1.02] transition-all"
             >
-              Start Editing Free →
+              Start Editing →
             </Link>
             <Link
               href="/auth/signup"
               className="border border-accent/30 text-accent font-bold text-lg px-8 py-4 rounded-2xl hover:bg-[rgba(0,170,255,0.05)] transition-all"
             >
-              Start Free Trial
+              Get Started
             </Link>
           </div>
         </div>
