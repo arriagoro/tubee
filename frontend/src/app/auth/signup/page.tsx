@@ -39,7 +39,7 @@ export default function SignupPage() {
       }
       if (user) {
         setSuccess(true);
-        setTimeout(() => window.location.replace('https://tubee.itsthatseason.com/editor'), 1500);
+        setTimeout(() => window.location.replace('https://tubee.itsthatseason.com/pricing'), 1500);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');

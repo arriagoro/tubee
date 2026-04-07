@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -43,6 +44,16 @@ const plans = [
 ];
 
 export default function PricingPage() {
+  // Detect return from FanBasis payment
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success' || document.referrer.includes('fanbasis.com')) {
+      localStorage.setItem('tubee_paid', 'true');
+      window.location.replace('https://tubee.itsthatseason.com/editor');
+    }
+  }, []);
+
+
   const router = useRouter();
 
   const handleFreeTrial = () => {
