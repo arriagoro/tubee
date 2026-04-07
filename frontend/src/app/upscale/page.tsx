@@ -151,6 +151,13 @@ export default function UpscalePage() {
         }}>
           💬 Captions
         </Link>
+        <Link href="/clipper" style={{
+          flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
+          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
+          borderRight: '1px solid rgba(0,170,255,0.15)',
+        }}>
+          🎬 Clipper
+        </Link>
         <div style={{
           flex: 1, padding: '14px 0', textAlign: 'center',
           background: '#00AAFF', color: '#fff', fontWeight: 700, fontSize: 15,

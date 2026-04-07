@@ -204,3 +204,74 @@ export async function listJobs(): Promise<{ total: number; jobs: JobSummary[] }>
   if (!res.ok) throw new Error('Failed to list jobs');
   return res.json();
 }
+
+// ─── Auto-Clipper ────────────────────────────────────────────────────────────
+
+export interface AutoClipRequest {
+  job_id: string;
+  num_clips?: number;
+  clip_duration?: number;
+  style?: string;
+  format?: string;
+}
+
+export interface AutoClipResponse {
+  job_id: string;
+  status: string;
+}
+
+export interface ClipHighlight {
+  start: number;
+  end: number;
+  duration: number;
+  score: number;
+  reason: string;
+  type: string;
+  transcript_snippet: string;
+}
+
+export interface ClipResult {
+  index: number;
+  filename: string;
+  highlight: ClipHighlight;
+  download_url: string;
+}
+
+export interface ClipsResponse {
+  job_id: string;
+  status: string;
+  progress: number;
+  stage: string;
+  highlights: ClipHighlight[];
+  clips: ClipResult[];
+  total_clips: number;
+}
+
+export async function submitAutoClip(req: AutoClipRequest): Promise<AutoClipResponse> {
+  const API_BASE = await apiBase();
+  const res = await fetch(`${API_BASE}/auto-clip`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Auto-clip failed' }));
+    throw new Error(err.detail || 'Auto-clip failed');
+  }
+  return res.json();
+}
+
+export async function getClips(jobId: string): Promise<ClipsResponse> {
+  const API_BASE = await apiBase();
+  const res = await fetch(`${API_BASE}/clips/${jobId}`, { headers: SKIP_NGROK });
+  if (!res.ok) throw new Error('Failed to fetch clips');
+  return res.json();
+}
+
+export function getClipDownloadUrl(apiBase: string, jobId: string, clipIndex: number): string {
+  return `${apiBase}/clips/${jobId}/download/${clipIndex}`;
+}
+
+export function getAllClipsDownloadUrl(apiBase: string, jobId: string): string {
+  return `${apiBase}/clips/${jobId}/download-all`;
+}

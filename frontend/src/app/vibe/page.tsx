@@ -176,6 +176,7 @@ export default function VibePage() {
               { label: 'Generate', href: '/generate' },
               { label: 'Vibe', href: '/vibe' },
               { label: 'Captions', href: '/captions' },
+              { label: 'Clipper', href: '/clipper' },
               { label: 'Upscale', href: '/upscale' },
             ].map((tab) => (
               <Link

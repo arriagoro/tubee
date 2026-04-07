@@ -154,6 +154,14 @@ class GenerateMusicRequest(BaseModel):
     duration: Optional[int] = 30          # Duration in seconds
 
 
+class AutoClipRequest(BaseModel):
+    job_id: str
+    num_clips: Optional[int] = 5
+    clip_duration: Optional[int] = 60
+    style: Optional[str] = "general"      # gaming, podcast, sports, general
+    format: Optional[str] = "reels"       # reels (9:16), landscape (16:9), square (1:1)
+
+
 class UpscaleRequest(BaseModel):
     job_id: str
     scale: Optional[int] = 4              # 2 or 4
@@ -1946,6 +1954,254 @@ def _run_remove_takes_task(
         jobs[job_id].update({
             "status": "error",
             "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+# ---------------------------------------------------------------------------
+# Auto-Clipper endpoints
+# ---------------------------------------------------------------------------
+
+CLIPS_DIR = BASE_DIR / "clips"
+CLIPS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@app.post("/auto-clip", summary="Find highlights and extract clips from a long video")
+async def auto_clip_endpoint(
+    req: AutoClipRequest,
+    background_tasks: BackgroundTasks,
+):
+    """
+    Analyze a long video, find the best moments, and extract social-media-ready clips.
+    Supports gaming streams, podcasts, sports, and general content.
+    """
+    if req.job_id not in jobs:
+        raise HTTPException(404, f"Job {req.job_id} not found")
+
+    job = jobs[req.job_id]
+    video_files = job.get("video_files", [])
+    if not video_files:
+        raise HTTPException(400, "No video files in this job")
+
+    # Use the first (or only) uploaded video
+    source_path = video_files[0]
+    if not os.path.exists(source_path):
+        raise HTTPException(404, "Source video file not found on disk")
+
+    # Create a new job for the auto-clip task
+    clip_job_id = str(uuid.uuid4())
+    clip_output_dir = str(CLIPS_DIR / clip_job_id)
+    os.makedirs(clip_output_dir, exist_ok=True)
+
+    jobs[clip_job_id] = {
+        "job_id": clip_job_id,
+        "type": "auto_clip",
+        "source_job_id": req.job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting auto-clip analysis...",
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+        "num_clips": req.num_clips,
+        "clip_duration": req.clip_duration,
+        "style": req.style,
+        "format": req.format,
+        "highlights": [],
+        "clips": [],
+    }
+    save_job(clip_job_id)
+
+    background_tasks.add_task(
+        _run_auto_clip_task,
+        clip_job_id, source_path, clip_output_dir,
+        req.num_clips, req.clip_duration, req.style, req.format,
+    )
+
+    return {"job_id": clip_job_id, "status": "processing"}
+
+
+@app.post("/auto-clip/upload", summary="Upload a video and auto-clip it")
+async def upload_and_auto_clip(
+    background_tasks: BackgroundTasks,
+    files: List[UploadFile] = File(...),
+    num_clips: int = Form(5),
+    clip_duration: int = Form(60),
+    style: str = Form("general"),
+    format: str = Form("reels"),
+):
+    """Upload a video file directly and start auto-clipping."""
+    if not files:
+        raise HTTPException(400, "No files uploaded")
+
+    # Save the uploaded file
+    job_id = str(uuid.uuid4())
+    job_upload_dir = UPLOADS_DIR / job_id
+    job_upload_dir.mkdir(parents=True, exist_ok=True)
+
+    video_files = []
+    for f in files:
+        dest = job_upload_dir / f.filename
+        with open(dest, "wb") as out:
+            content = await f.read()
+            out.write(content)
+        video_files.append(str(dest))
+
+    source_path = video_files[0]
+    clip_output_dir = str(CLIPS_DIR / job_id)
+    os.makedirs(clip_output_dir, exist_ok=True)
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "type": "auto_clip",
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting auto-clip analysis...",
+        "created_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+        "video_files": video_files,
+        "num_clips": num_clips,
+        "clip_duration": clip_duration,
+        "style": style,
+        "format": format,
+        "highlights": [],
+        "clips": [],
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_auto_clip_task,
+        job_id, source_path, clip_output_dir,
+        num_clips, clip_duration, style, format,
+    )
+
+    return {"job_id": job_id, "status": "processing"}
+
+
+@app.get("/clips/{job_id}", summary="Get auto-clip results")
+async def get_clips(job_id: str):
+    """Get the list of generated clips for an auto-clip job."""
+    if job_id not in jobs:
+        raise HTTPException(404, f"Job {job_id} not found")
+
+    job = jobs[job_id]
+    return {
+        "job_id": job_id,
+        "status": job.get("status", "unknown"),
+        "progress": job.get("progress", 0),
+        "stage": job.get("stage", ""),
+        "highlights": job.get("highlights", []),
+        "clips": [
+            {
+                "index": i,
+                "filename": c.get("filename", ""),
+                "highlight": c.get("highlight", {}),
+                "download_url": f"/clips/{job_id}/download/{i}",
+            }
+            for i, c in enumerate(job.get("clips", []))
+        ],
+        "total_clips": len(job.get("clips", [])),
+    }
+
+
+@app.get("/clips/{job_id}/download/{clip_index}", summary="Download a specific clip")
+async def download_clip(job_id: str, clip_index: int):
+    """Download an individual clip by index."""
+    if job_id not in jobs:
+        raise HTTPException(404, f"Job {job_id} not found")
+
+    job = jobs[job_id]
+    clips = job.get("clips", [])
+
+    if clip_index < 0 or clip_index >= len(clips):
+        raise HTTPException(404, f"Clip index {clip_index} out of range")
+
+    clip_path = clips[clip_index].get("path", "")
+    if not clip_path or not os.path.exists(clip_path):
+        raise HTTPException(404, "Clip file not found")
+
+    return FileResponse(
+        clip_path,
+        media_type="video/mp4",
+        filename=clips[clip_index].get("filename", f"clip_{clip_index}.mp4"),
+    )
+
+
+@app.get("/clips/{job_id}/download-all", summary="Download all clips as zip")
+async def download_all_clips(job_id: str):
+    """Download all clips for a job as a zip file."""
+    if job_id not in jobs:
+        raise HTTPException(404, f"Job {job_id} not found")
+
+    job = jobs[job_id]
+    clips = job.get("clips", [])
+
+    if not clips:
+        raise HTTPException(404, "No clips available")
+
+    import zipfile
+    zip_path = str(CLIPS_DIR / f"{job_id}_all_clips.zip")
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for clip in clips:
+            clip_path = clip.get("path", "")
+            if clip_path and os.path.exists(clip_path):
+                zf.write(clip_path, clip.get("filename", os.path.basename(clip_path)))
+
+    return FileResponse(
+        zip_path,
+        media_type="application/zip",
+        filename=f"tubee_clips_{job_id[:8]}.zip",
+    )
+
+
+def _run_auto_clip_task(
+    job_id: str,
+    video_path: str,
+    output_dir: str,
+    num_clips: int,
+    clip_duration: int,
+    style: str,
+    format: str,
+) -> None:
+    """Background task to run the auto-clipper pipeline."""
+    from auto_clipper import process_auto_clip_job
+
+    def progress_callback(stage: str, pct: int):
+        jobs[job_id].update({
+            "progress": pct,
+            "stage": stage,
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+    try:
+        result = process_auto_clip_job(
+            video_path=video_path,
+            output_dir=output_dir,
+            num_clips=num_clips,
+            clip_duration=clip_duration,
+            style=style,
+            format=format,
+            progress_callback=progress_callback,
+        )
+
+        jobs[job_id].update({
+            "status": "completed",
+            "progress": 100,
+            "stage": f"Done! {result['total_clips']} clips generated",
+            "highlights": result.get("highlights", []),
+            "clips": result.get("clips", []),
+            "total_clips": result.get("total_clips", 0),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+    except Exception as e:
+        logger.exception(f"Auto-clip task failed for job {job_id}")
+        jobs[job_id].update({
+            "status": "error",
+            "stage": f"Failed: {str(e)}",
             "error": str(e),
             "updated_at": datetime.utcnow().isoformat(),
         })
