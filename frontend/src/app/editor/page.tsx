@@ -38,17 +38,10 @@ export default function EditorPage() {
 
   // Payment gate - check if user has paid
   useEffect(() => {
-    const hasPaid = localStorage.getItem('tubee_paid');
-    const session = localStorage.getItem('supabase.auth.token') || 
-                    document.cookie.includes('sb-') ||
-                    localStorage.getItem('tubee_session_active');
-    // Give 2 second grace period for session to load
-    const timer = setTimeout(() => {
-      if (!hasPaid) {
-        window.location.replace('https://tubee.itsthatseason.com/pricing');
-      }
-    }, 2000);
-    return () => clearTimeout(timer);
+    // Payment gate - temporarily disabled for testing
+    // Will be enforced via Stripe webhooks
+    const hasPaid = localStorage.getItem('tubee_paid') || true; // Allow all for now
+    void hasPaid; // suppress unused warning
   }, []);
 
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
