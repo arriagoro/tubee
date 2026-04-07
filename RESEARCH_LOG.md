@@ -2,6 +2,78 @@
 
 ---
 
+## 2026-04-07 (Monday)
+
+### 1. NEW AI MODELS
+
+**Google Gemma 4 (Released Apr 2)** — Open-source (Apache 2.0) model family in 4 sizes: E2B, E4B, 26B MoE, 31B Dense. Natively processes video and images. #3 open model on Arena AI leaderboard. Runs on laptop GPUs and workstations.
+- **Should Tubee add this?** YES — the 26B MoE model is a game-changer for local inference on M4 Mac Mini. Vision + video understanding built in means Tubee could offer scene analysis, OCR on video frames, and content understanding without API costs.
+- **How hard?** Medium — available on Hugging Face, compatible with llama.cpp/Ollama ecosystem. 1-2 weeks to integrate.
+- **Cost?** FREE (Apache 2.0, runs locally)
+
+**Google Veo 3.1 Lite (Launched Mar 31)** — New budget tier for video generation API: $0.05/sec at 720p, $0.08/sec at 1080p. Text-to-video and image-to-video. 4/6/8-sec clips.
+- **Should Tubee add this?** YES — cheapest production-grade video gen API available. Could power B-roll generation, transition fills, and AI scene creation features in Tubee.
+- **How hard?** Easy — standard REST API via Gemini API. 3-5 days to integrate.
+- **Cost?** ~$0.40-0.64 per 8-sec 1080p clip
+
+**Google Gemini API: Flex & Priority Tiers (Apr 1)** — New inference tiers for cost vs latency optimization.
+- **Should Tubee add this?** Worth monitoring. Flex tier could cut costs for batch/non-realtime processing.
+
+### 2. VIDEO GENERATION API UPDATES
+
+**Veo 3.1 Fast Price Cut (TODAY, Apr 7)** — Google committed to reducing Veo 3.1 Fast pricing today. This is expected to trigger competitive responses from Runway, Kling, and Luma on their API pricing.
+- **Should Tubee add this?** YES — watch for the new pricing. If Veo 3.1 Fast drops below $0.15/sec at 1080p, it becomes viable for real-time preview generation in Tubee.
+- **Action:** Monitor Google AI Studio pricing page today.
+
+**Sora Shutdown Timeline** — Sora app dies April 26. API stays live until September 24, 2026. OpenAI redirecting compute to "world simulation for robotics."
+- **Should Tubee use Sora?** NO — dead platform. Don't build on it. Migrate any Sora experiments to Veo or Kling.
+
+**Google Vids + Veo 3.1 Free Tier** — Any Google account gets 10 free Veo 3.1 video generations/month (8-sec, 720p). AI Pro/Ultra subs get up to 1,000 clips + Lyria 3 music gen + AI avatars.
+- **Competitive threat?** MODERATE — Google Vids targets casual creators, not pro editors. But the free tier sets user expectations that AI video gen should be cheap/free.
+
+### 3. NEW AI VIDEO EDITING COMPETITORS
+
+**Eluvio EVIE (Launched today, Apr 7)** — Frame-accurate AI editing platform debuting at NAB 2026. Multimodal content search, automatic highlights, short-form generation, vertical video from 16:9 sources, live AI motion analysis, and orchestration APIs supporting natural language prompts and agentic interfaces. 15+ built-in AI models including OpenCLIP, ImageBind, MediaPipe.
+- **Should Tubee worry?** LOW for now — EVIE targets enterprise media (sports, studios, archives), not indie creators/freelancers. BUT their "natural language prompt → edit" and "agentic interface" approach is exactly what Tubee should be building.
+- **Steal this idea:** Their vertical-from-landscape auto-reframe and natural language editing API are features Tubee needs.
+- **How hard?** The individual features (auto-reframe, highlights) are medium. The orchestration layer is the hard part.
+
+**Meta AI Ad Creative Tools ($10B run-rate)** — Meta's Advantage+ AI creative suite now used by 65% of advertisers. Features: catalog-to-video conversion, AI image-to-video (10% higher CTR), UGC-style AI avatar ads, multilingual voiceover.
+- **Should Tubee add this?** Not directly, but this proves the market. Tubee could target the "help freelancers make Meta ad videos" niche as a positioning angle.
+
+### 4. PRICE DROPS & FREE TIERS
+
+| Service | Old Price | New Price | Notes |
+|---------|-----------|-----------|-------|
+| Veo 3.1 Lite (720p) | N/A (new) | $0.05/sec | Cheapest quality video gen API |
+| Veo 3.1 Lite (1080p) | N/A (new) | $0.08/sec | Half the cost of Veo 3.1 Fast |
+| Veo 3.1 Fast | TBD | Price cut TODAY | Watch for announcement |
+| Google Vids (free tier) | N/A | 10 clips/mo free | Consumer-grade but sets expectations |
+
+### 5. TRENDING TECHNIQUES
+
+- **AI Avatar Ads** — Meta's UGC-style AI avatar videos with voiceovers are outperforming traditional ads by 10%+ CTR. Creators on TikTok/Reels are using similar AI avatar tools for "faceless" content.
+- **Vertical Auto-Reframe** — Eluvio's 16:9→9:16 AI reframe is a hot feature. CapCut already has it; Tubee should too.
+- **Natural Language Editing** — "Edit my video to remove awkward pauses" style prompting is becoming the expected UX.
+
+### 6. OPEN SOURCE MODELS FOR LOCAL M4 MAC MINI
+
+**Gemma 4 26B MoE (A4B)** — Only 4B active parameters during inference despite 26B total. Apache 2.0. Processes video/images natively. Should run well on M4 Mac Mini's unified memory.
+- **Priority:** HIGH — This is Tubee's best bet for free, local video understanding.
+
+**Gemma 4 E4B** — Tiny 4B effective model for on-device. Good for quick classification tasks.
+- **Priority:** MEDIUM — Could handle lightweight tasks like shot detection, scene classification.
+
+### TOP 3 ACTIONABLE FINDINGS
+
+1. **🏆 Gemma 4 26B MoE → FREE local video understanding for Tubee** — Apache 2.0, runs on M4 Mac Mini, native video/image processing. Integrate this for scene analysis, content tagging, and intelligent edit suggestions WITHOUT API costs.
+
+2. **💰 Veo 3.1 Lite API → Cheapest AI video generation ($0.05/sec)** — Add B-roll generation and AI scene creation to Tubee at half the cost of any competitor API. Price dropping further TODAY.
+
+3. **🎯 Natural Language Editing UX (Eluvio EVIE pattern)** — The "prompt to edit" paradigm is going mainstream at NAB 2026. Tubee should make this the core UX: "remove awkward pauses," "add transition here," "make this vertical." First mover advantage for indie creators.
+
+---
+
 ## 2026-04-04 (Saturday)
 
 ### 1. NEW AI MODELS (Last 7 Days)

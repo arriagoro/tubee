@@ -14,7 +14,6 @@ Run with:
   uvicorn main:app --reload --port 8000
 """
 
-import setup_ffmpeg  # Configure FFmpeg path
 import os
 import uuid
 import json
@@ -141,6 +140,15 @@ class GenerateThumbnailRequest(BaseModel):
     style_prompt: Optional[str] = None
 
 
+class AnalyzeTakesRequest(BaseModel):
+    job_id: str
+
+
+class RemoveTakesRequest(BaseModel):
+    job_id: str
+    aggressiveness: float = 0.5           # 0.0 = keep everything, 1.0 = remove anything below 0.9
+
+
 class GenerateMusicRequest(BaseModel):
     prompt: str
     duration: Optional[int] = 30          # Duration in seconds
@@ -166,6 +174,7 @@ class JobStatus(BaseModel):
     clips_used: Optional[int] = None
     edit_notes: Optional[str] = None
     error: Optional[str] = None
+    take_analysis: Optional[Dict] = None
 
 
 # ---------------------------------------------------------------------------
@@ -1689,6 +1698,251 @@ def _run_music_generation_task(job_id: str, prompt: str, duration: int) -> None:
 
     except Exception as e:
         logger.error(f"[{job_id}] Music generation failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+# ---------------------------------------------------------------------------
+# Take Analysis & Removal endpoints
+# ---------------------------------------------------------------------------
+
+@app.post("/analyze-takes", summary="Analyze video takes to find good vs bad ones")
+async def analyze_takes_endpoint(
+    request: AnalyzeTakesRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    Analyze uploaded video clips to identify good vs bad takes.
+    Uses Whisper for transcription + Kimi K2 Vision for quality assessment.
+    Job must have uploaded videos first via POST /upload.
+    """
+    source_job_id = request.job_id
+    if source_job_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Job {source_job_id} not found")
+
+    source_job = jobs[source_job_id]
+    clips = source_job.get("video_files", [])
+    if not clips:
+        raise HTTPException(status_code=400, detail="No video files found for this job. Upload clips first.")
+
+    # Create a new job for the analysis
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting take analysis",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": f"Take analysis for job {source_job_id[:8]}",
+        "video_files": clips,
+        "music_file": source_job.get("music_file"),
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+        "take_analysis": None,
+        "source_job_id": source_job_id,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_analyze_takes_task,
+        job_id=job_id,
+        video_files=clips,
+    )
+
+    return {
+        "job_id": job_id,
+        "source_job_id": source_job_id,
+        "status": "processing",
+        "message": "Take analysis started. Poll GET /status/{job_id} for progress.",
+    }
+
+
+@app.post("/remove-takes", summary="Remove bad takes and output clean video")
+async def remove_takes_endpoint(
+    request: RemoveTakesRequest,
+    background_tasks: BackgroundTasks,
+) -> Dict[str, Any]:
+    """
+    Remove bad takes from videos based on analysis results.
+    The job_id should be the analysis job returned from POST /analyze-takes,
+    OR the original upload job (will auto-analyze first).
+    
+    aggressiveness controls how strict the filtering is:
+    - 0.0 = very lenient, keeps almost everything
+    - 0.5 = balanced (default)
+    - 1.0 = very strict, only keeps excellent takes
+    """
+    source_job_id = request.job_id
+    if source_job_id not in jobs:
+        raise HTTPException(status_code=404, detail=f"Job {source_job_id} not found")
+
+    source_job = jobs[source_job_id]
+
+    # Check if this is an analysis job or an upload job
+    analysis = source_job.get("take_analysis")
+    video_files = source_job.get("video_files", [])
+
+    if not analysis:
+        # Check if this was an upload job — need to analyze first
+        if not video_files:
+            raise HTTPException(
+                status_code=400,
+                detail="No video files or analysis found. Run /analyze-takes first."
+            )
+        # We'll analyze inline before removing
+        logger.info(f"No prior analysis for {source_job_id}, will analyze during removal")
+
+    aggressiveness = max(0.0, min(1.0, request.aggressiveness))
+
+    # Create job for removal output
+    job_id = str(uuid.uuid4())
+    now = datetime.utcnow().isoformat()
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "processing",
+        "progress": 0,
+        "stage": "Starting take removal",
+        "created_at": now,
+        "updated_at": now,
+        "prompt": f"Remove bad takes (aggressiveness: {aggressiveness})",
+        "video_files": video_files,
+        "music_file": source_job.get("music_file"),
+        "output_path": None,
+        "duration": None,
+        "clips_used": None,
+        "edit_notes": None,
+        "error": None,
+        "source_job_id": source_job_id,
+    }
+    save_job(job_id)
+
+    background_tasks.add_task(
+        _run_remove_takes_task,
+        job_id=job_id,
+        video_files=video_files,
+        analysis=analysis,
+        aggressiveness=aggressiveness,
+    )
+
+    return {
+        "job_id": job_id,
+        "source_job_id": source_job_id,
+        "status": "processing",
+        "message": f"Take removal started (aggressiveness: {aggressiveness}). Poll GET /status/{job_id} for progress.",
+    }
+
+
+def _run_analyze_takes_task(job_id: str, video_files: List[str]) -> None:
+    """Background task: analyze video takes."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from take_analyzer import analyze_takes
+
+    def progress_callback(stage: str, pct: int):
+        jobs[job_id]["stage"] = stage
+        jobs[job_id]["progress"] = pct
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+    try:
+        result = analyze_takes(
+            video_files=video_files,
+            job_id=job_id,
+            progress_callback=progress_callback,
+        )
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Analysis complete",
+            "take_analysis": result,
+            "edit_notes": result.get("summary", ""),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Take analysis complete: {result.get('summary')}")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Take analysis failed: {e}", exc_info=True)
+        jobs[job_id].update({
+            "status": "error",
+            "stage": "Failed",
+            "error": str(e),
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+
+
+def _run_remove_takes_task(
+    job_id: str,
+    video_files: List[str],
+    analysis: Optional[Dict],
+    aggressiveness: float,
+) -> None:
+    """Background task: remove bad takes and concatenate good ones."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from take_remover import remove_bad_takes
+
+    output_path = str(OUTPUTS_DIR / f"{job_id}_clean.mp4")
+
+    def progress_callback(stage: str, pct: int):
+        jobs[job_id]["stage"] = stage
+        jobs[job_id]["progress"] = pct
+        jobs[job_id]["updated_at"] = datetime.utcnow().isoformat()
+        save_job(job_id)
+
+    try:
+        # If no analysis provided, run analysis first
+        if not analysis:
+            progress_callback("Running take analysis first", 5)
+            from take_analyzer import analyze_takes as _analyze
+            analysis = _analyze(
+                video_files=video_files,
+                job_id=job_id,
+                progress_callback=lambda s, p: progress_callback(s, int(p * 0.4)),
+            )
+
+        progress_callback("Removing bad takes", 45)
+
+        result_path = remove_bad_takes(
+            video_files=video_files,
+            analysis=analysis,
+            output_path=output_path,
+            aggressiveness=aggressiveness,
+            progress_callback=lambda s, p: progress_callback(s, int(45 + p * 0.55)),
+        )
+
+        kept = analysis.get("kept_count", "?")
+        removed = analysis.get("removed_count", "?")
+        total = analysis.get("total_count", "?")
+
+        jobs[job_id].update({
+            "status": "done",
+            "progress": 100,
+            "stage": "Complete",
+            "output_path": result_path,
+            "edit_notes": f"Kept {kept}/{total} takes, removed {removed} (aggressiveness: {aggressiveness})",
+            "take_analysis": analysis,
+            "updated_at": datetime.utcnow().isoformat(),
+        })
+        save_job(job_id)
+        logger.info(f"[{job_id}] Take removal complete: kept {kept}/{total}")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Take removal failed: {e}", exc_info=True)
         jobs[job_id].update({
             "status": "error",
             "stage": "Failed",

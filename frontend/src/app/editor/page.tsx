@@ -64,6 +64,16 @@ export default function EditorPage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  // Smart Take Removal state
+  const [takeRemovalEnabled, setTakeRemovalEnabled] = useState(false);
+  const [takeAggressiveness, setTakeAggressiveness] = useState(0.5);
+  const [takeAnalyzing, setTakeAnalyzing] = useState(false);
+  const [takeAnalysisStatus, setTakeAnalysisStatus] = useState('');
+  const [takeAnalysisResult, setTakeAnalysisResult] = useState<any>(null);
+  const [takeRemoving, setTakeRemoving] = useState(false);
+  const [takeRemovalDone, setTakeRemovalDone] = useState(false);
+  const [takeAnalysisJobId, setTakeAnalysisJobId] = useState<string | null>(null);
+
   const videoInputRef = useRef<HTMLInputElement>(null);
   const musicInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -79,6 +89,118 @@ export default function EditorPage() {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) setMusicFile(files[0]);
   };
+  // Smart Take Removal: analyze takes after upload
+  const handleAnalyzeTakes = async (uploadJobId: string) => {
+    if (!takeRemovalEnabled || !API) return;
+    setTakeAnalyzing(true);
+    setTakeAnalysisStatus('Starting analysis…');
+    setTakeAnalysisResult(null);
+    setTakeRemovalDone(false);
+
+    try {
+      const res = await fetch(`${API}/analyze-takes`, {
+        method: 'POST',
+        headers: { ...HEADERS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: uploadJobId }),
+      });
+      if (!res.ok) throw new Error(`Analysis request failed (${res.status})`);
+      const data = await res.json();
+      const analysisJobId = data.job_id;
+      setTakeAnalysisJobId(analysisJobId);
+
+      // Poll for analysis completion
+      const analysisPoll = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`${API}/status/${analysisJobId}`, { headers: HEADERS });
+          const statusData = await statusRes.json();
+          setTakeAnalysisStatus(statusData.stage || 'Analyzing…');
+
+          if (statusData.status === 'done' || statusData.status === 'completed') {
+            clearInterval(analysisPoll);
+            setTakeAnalyzing(false);
+            // Fetch full job data to get take_analysis
+            const jobRes = await fetch(`${API}/status/${analysisJobId}`, { headers: HEADERS });
+            const jobData = await jobRes.json();
+            // The analysis result is stored in the job's take_analysis field
+            // We need to get it from the job file or a dedicated endpoint
+            // For now, parse from edit_notes and use a dedicated fetch
+            try {
+              const fullRes = await fetch(`${API}/jobs`, { headers: HEADERS });
+              const fullData = await fullRes.json();
+              const analysisJob = fullData.jobs?.find((j: any) => j.job_id === analysisJobId);
+              // The take_analysis is in the job JSON file - fetch via status
+              // Since the API returns take_analysis in the job dict, try to access it
+              if (statusData.take_analysis) {
+                setTakeAnalysisResult(statusData.take_analysis);
+              } else {
+                // Fallback: create a basic result from edit_notes
+                setTakeAnalysisResult({
+                  summary: statusData.edit_notes || jobData.edit_notes || 'Analysis complete',
+                  takes: [],
+                });
+              }
+            } catch {
+              setTakeAnalysisResult({
+                summary: statusData.edit_notes || 'Analysis complete',
+                takes: [],
+              });
+            }
+          } else if (statusData.status === 'error' || statusData.status === 'failed') {
+            clearInterval(analysisPoll);
+            setTakeAnalyzing(false);
+            setTakeAnalysisResult(null);
+          }
+        } catch {
+          // keep polling
+        }
+      }, 3000);
+    } catch (err) {
+      setTakeAnalyzing(false);
+      console.error('Take analysis failed:', err);
+    }
+  };
+
+  const handleRemoveTakes = async () => {
+    if (!takeAnalysisJobId || !API) return;
+    setTakeRemoving(true);
+
+    try {
+      const res = await fetch(`${API}/remove-takes`, {
+        method: 'POST',
+        headers: { ...HEADERS, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: takeAnalysisJobId,
+          aggressiveness: takeAggressiveness,
+        }),
+      });
+      if (!res.ok) throw new Error(`Remove takes request failed (${res.status})`);
+      const data = await res.json();
+      const removeJobId = data.job_id;
+
+      // Poll for removal completion
+      const removePoll = setInterval(async () => {
+        try {
+          const statusRes = await fetch(`${API}/status/${removeJobId}`, { headers: HEADERS });
+          const statusData = await statusRes.json();
+
+          if (statusData.status === 'done' || statusData.status === 'completed') {
+            clearInterval(removePoll);
+            setTakeRemoving(false);
+            setTakeRemovalDone(true);
+          } else if (statusData.status === 'error' || statusData.status === 'failed') {
+            clearInterval(removePoll);
+            setTakeRemoving(false);
+          }
+        } catch {
+          // keep polling
+        }
+      }, 3000);
+    } catch (err) {
+      setTakeRemoving(false);
+      console.error('Take removal failed:', err);
+    }
+  };
+
   const startPolling = (id: string) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
@@ -132,6 +254,12 @@ export default function EditorPage() {
       const upData = await upRes.json();
       const id = upData.job_id;
       setJobId(id);
+
+      // If take removal is enabled, trigger analysis
+      if (takeRemovalEnabled) {
+        handleAnalyzeTakes(id);
+      }
+
       setStage('editing');
       setStatusMsg('Starting edit…');
       const editRes = await fetch(`${API}/edit`, {
@@ -159,6 +287,9 @@ export default function EditorPage() {
     setVideoFiles([]); setMusicFile(null); setPrompt(''); setStyle('Cinematic');
     setTransition('hard_cut'); setExportQuality('1080p'); setOutputFormat('reels');
     setStage('idle'); setProgress(0); setStatusMsg(''); setJobId(null); setError('');
+    setTakeRemovalEnabled(false); setTakeAggressiveness(0.5); setTakeAnalyzing(false);
+    setTakeAnalysisResult(null); setTakeRemoving(false); setTakeRemovalDone(false);
+    setTakeAnalysisJobId(null); setTakeAnalysisStatus('');
     if (pollRef.current) clearInterval(pollRef.current);
   };
   const isWorking = stage === 'uploading' || stage === 'editing' || stage === 'polling';
@@ -291,6 +422,182 @@ export default function EditorPage() {
       >
         {musicFile ? `🎵 ${musicFile.name}` : '🎵 Add Music (optional)'}
       </button>
+
+      {/* ── Smart Take Removal ─────────────────────────── */}
+      <div style={{
+        marginBottom: 20,
+        background: '#0D1526',
+        border: takeRemovalEnabled ? '1px solid rgba(0,170,255,0.4)' : '1px solid rgba(0,170,255,0.1)',
+        borderRadius: 16,
+        overflow: 'hidden',
+        transition: 'all 0.2s',
+      }}>
+        {/* Toggle Header */}
+        <button
+          onClick={() => setTakeRemovalEnabled(!takeRemovalEnabled)}
+          disabled={isWorking}
+          style={{
+            width: '100%', padding: '16px 18px',
+            background: 'transparent', border: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            cursor: isWorking ? 'not-allowed' : 'pointer',
+          }}
+        >
+          <span style={{ color: '#fff', fontSize: 16, fontWeight: 600 }}>
+            ✂️ Smart Take Removal
+          </span>
+          <div style={{
+            width: 44, height: 24, borderRadius: 12,
+            background: takeRemovalEnabled ? '#00AAFF' : '#1a2540',
+            position: 'relative', transition: 'background 0.2s',
+          }}>
+            <div style={{
+              width: 18, height: 18, borderRadius: '50%',
+              background: '#fff', position: 'absolute', top: 3,
+              left: takeRemovalEnabled ? 23 : 3,
+              transition: 'left 0.2s',
+            }} />
+          </div>
+        </button>
+
+        {/* Expanded Content */}
+        {takeRemovalEnabled && (
+          <div style={{ padding: '0 18px 18px' }}>
+            <p style={{ color: '#8899BB', fontSize: 13, marginBottom: 16, lineHeight: 1.5 }}>
+              AI analyzes your clips, removes stumbles and weak takes automatically
+            </p>
+
+            {/* Aggressiveness Slider */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                fontSize: 12, color: '#8899BB', marginBottom: 6,
+              }}>
+                <span>Conservative</span>
+                <span style={{ color: '#00AAFF', fontWeight: 600 }}>
+                  {takeAggressiveness <= 0.3 ? 'Lenient' : takeAggressiveness <= 0.7 ? 'Balanced' : 'Strict'}
+                </span>
+                <span>Aggressive</span>
+              </div>
+              <input
+                type="range"
+                min="0" max="100" step="5"
+                value={takeAggressiveness * 100}
+                onChange={e => setTakeAggressiveness(parseInt(e.target.value) / 100)}
+                disabled={isWorking}
+                style={{
+                  width: '100%', height: 6,
+                  WebkitAppearance: 'none', appearance: 'none',
+                  background: `linear-gradient(to right, #00AAFF ${takeAggressiveness * 100}%, #1a2540 ${takeAggressiveness * 100}%)`,
+                  borderRadius: 3, outline: 'none',
+                  cursor: isWorking ? 'not-allowed' : 'pointer',
+                }}
+              />
+            </div>
+
+            {/* Analysis Results */}
+            {takeAnalysisResult && (
+              <div style={{
+                background: 'rgba(0,170,255,0.05)',
+                borderRadius: 12, padding: 14,
+                border: '1px solid rgba(0,170,255,0.15)',
+              }}>
+                <p style={{ color: '#00AAFF', fontSize: 14, fontWeight: 600, marginBottom: 10 }}>
+                  📊 {takeAnalysisResult.summary}
+                </p>
+                <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                  {takeAnalysisResult.takes?.map((take: { file: string; quality_score: number; recommendation: string; reason: string; issues?: string[] }, i: number) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 10,
+                      padding: '8px 0',
+                      borderBottom: i < takeAnalysisResult.takes.length - 1 ? '1px solid rgba(0,170,255,0.08)' : 'none',
+                    }}>
+                      <span style={{
+                        fontSize: 16, flexShrink: 0, marginTop: 2,
+                      }}>
+                        {take.recommendation === 'keep' ? '✅' : '❌'}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          marginBottom: 2,
+                        }}>
+                          <span style={{
+                            color: '#fff', fontSize: 13, fontWeight: 500,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {take.file}
+                          </span>
+                          <span style={{
+                            fontSize: 12, fontWeight: 600, flexShrink: 0, marginLeft: 8,
+                            color: take.quality_score >= 0.7 ? '#00FF88' : take.quality_score >= 0.4 ? '#FFD700' : '#FF6B6B',
+                          }}>
+                            {(take.quality_score * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <p style={{ color: '#8899BB', fontSize: 11, margin: 0 }}>
+                          {take.reason}
+                        </p>
+                        {take.issues && take.issues.length > 0 && (
+                          <p style={{ color: '#FF8888', fontSize: 11, margin: '2px 0 0' }}>
+                            ⚠️ {take.issues.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Proceed button */}
+                {!takeRemovalDone && (
+                  <button
+                    onClick={handleRemoveTakes}
+                    disabled={isWorking || takeRemoving}
+                    style={{
+                      width: '100%', marginTop: 12, padding: 12,
+                      background: 'linear-gradient(135deg, #00AAFF, #00D4FF)',
+                      color: '#fff', border: 'none', borderRadius: 10,
+                      fontSize: 14, fontWeight: 700,
+                      cursor: isWorking || takeRemoving ? 'not-allowed' : 'pointer',
+                      opacity: isWorking || takeRemoving ? 0.6 : 1,
+                    }}
+                  >
+                    {takeRemoving ? '⏳ Removing bad takes…' : '✂️ Proceed with clean footage'}
+                  </button>
+                )}
+                {takeRemovalDone && (
+                  <div style={{
+                    marginTop: 12, padding: 10, textAlign: 'center',
+                    background: 'rgba(0,255,136,0.05)', borderRadius: 10,
+                    border: '1px solid rgba(0,255,136,0.2)',
+                  }}>
+                    <span style={{ color: '#00FF88', fontSize: 14, fontWeight: 600 }}>
+                      ✅ Clean footage ready — proceed with your edit below
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Analyzing indicator */}
+            {takeAnalyzing && !takeAnalysisResult && (
+              <div style={{
+                textAlign: 'center', padding: 20,
+                background: 'rgba(0,170,255,0.05)', borderRadius: 12,
+              }}>
+                <div style={{ fontSize: 24, marginBottom: 8 }}>🔍</div>
+                <p style={{ color: '#00AAFF', fontSize: 14, fontWeight: 500 }}>
+                  Analyzing takes…
+                </p>
+                <p style={{ color: '#8899BB', fontSize: 12 }}>
+                  {takeAnalysisStatus || 'Transcribing and evaluating your clips'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* ── Prompt ───────────────────────────────────────── */}
       <textarea
         value={prompt}
