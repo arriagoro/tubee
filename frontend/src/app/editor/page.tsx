@@ -36,12 +36,47 @@ const OUTPUT_FORMATS = [
 type Stage = 'idle' | 'uploading' | 'editing' | 'polling' | 'done' | 'error';
 export default function EditorPage() {
 
-  // Payment gate - check if user has paid
+  // Payment gate — check real subscription status via backend
+  const [subscriptionChecked, setSubscriptionChecked] = useState(false);
   useEffect(() => {
-    // Payment gate - temporarily disabled for testing
-    // Will be enforced via Stripe webhooks
-    const hasPaid = localStorage.getItem('tubee_paid') || true; // Allow all for now
-    void hasPaid; // suppress unused warning
+    const checkPayment = async () => {
+      try {
+        // Check for payment=success query param (just completed checkout)
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          if (params.get('payment') === 'success') {
+            // Just paid — give webhook a moment to process, then allow access
+            setSubscriptionChecked(true);
+            return;
+          }
+        }
+
+        const { data: { user: currentUser } } = await (await import('@/lib/supabase')).supabase.auth.getUser();
+        if (!currentUser) {
+          // Not logged in — let AuthProvider handle redirect
+          setSubscriptionChecked(true);
+          return;
+        }
+
+        const API = await apiBase();
+        const res = await fetch(`${API}/subscription-status/${currentUser.id}`, {
+          headers: HEADERS,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.is_paid) {
+            // No active subscription — redirect to pricing
+            window.location.href = '/pricing';
+            return;
+          }
+        }
+      } catch (err) {
+        // On error, don't block — allow access
+        console.error('Subscription check failed:', err);
+      }
+      setSubscriptionChecked(true);
+    };
+    checkPayment();
   }, []);
 
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
@@ -75,11 +110,13 @@ export default function EditorPage() {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    let files = Array.from(e.target.files || []);
+    if (videoFiles.length + files.length > 8) { setError('Maximum 8 videos per edit'); files = files.slice(0, 8 - videoFiles.length); }
     if (files.length > 0) setVideoFiles(files);
   };
   const handleMusicSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    let files = Array.from(e.target.files || []);
+    if (videoFiles.length + files.length > 8) { setError('Maximum 8 videos per edit'); files = files.slice(0, 8 - videoFiles.length); }
     if (files.length > 0) setMusicFile(files[0]);
   };
   // Smart Take Removal: analyze takes after upload
@@ -220,6 +257,7 @@ export default function EditorPage() {
   };
   const handleSubmit = async () => {
     if (videoFiles.length === 0) { setError('Select at least one video'); return; }
+    if (videoFiles.length > 8) { setError('Maximum 8 videos per edit. Please remove some clips.'); return; }
     setError('');
     setStage('uploading');
     setProgress(0);

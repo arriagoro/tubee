@@ -275,3 +275,63 @@ export function getClipDownloadUrl(apiBase: string, jobId: string, clipIndex: nu
 export function getAllClipsDownloadUrl(apiBase: string, jobId: string): string {
   return `${apiBase}/clips/${jobId}/download-all`;
 }
+
+// ─── Stripe Payments ─────────────────────────────────────────────────────────
+
+export interface CheckoutSessionRequest {
+  plan: 'starter' | 'pro';
+  user_email: string;
+  user_id: string;
+}
+
+export interface CheckoutSessionResponse {
+  checkout_url: string;
+}
+
+export async function createCheckoutSession(req: CheckoutSessionRequest): Promise<CheckoutSessionResponse> {
+  const API_BASE = await apiBase();
+  const res = await fetch(`${API_BASE}/create-checkout-session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Checkout failed' }));
+    throw new Error(err.detail || 'Failed to create checkout session');
+  }
+  return res.json();
+}
+
+export interface SubscriptionStatusResponse {
+  is_paid: boolean;
+  plan: 'starter' | 'pro' | null;
+  status: string;
+  stripe_customer_id?: string;
+}
+
+export async function getSubscriptionStatus(userId: string): Promise<SubscriptionStatusResponse> {
+  const API_BASE = await apiBase();
+  const res = await fetch(`${API_BASE}/subscription-status/${userId}`, {
+    headers: SKIP_NGROK,
+  });
+  if (!res.ok) throw new Error('Failed to check subscription status');
+  return res.json();
+}
+
+export interface PortalSessionResponse {
+  portal_url: string;
+}
+
+export async function createPortalSession(userId: string): Promise<PortalSessionResponse> {
+  const API_BASE = await apiBase();
+  const res = await fetch(`${API_BASE}/create-portal-session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },
+    body: JSON.stringify({ user_id: userId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Portal session failed' }));
+    throw new Error(err.detail || 'Failed to create portal session');
+  }
+  return res.json();
+}

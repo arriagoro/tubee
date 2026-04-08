@@ -25,11 +25,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Form, Request, Header
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import requests
+
+# Stripe + Supabase imports
+import stripe
+from supabase import create_client as create_supabase_client
 
 # Configure logging
 logging.basicConfig(
@@ -56,6 +60,33 @@ try:
     load_dotenv(BASE_DIR / ".env")
 except ImportError:
     pass
+
+# ---------------------------------------------------------------------------
+# Stripe configuration
+# ---------------------------------------------------------------------------
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICE_IDS = {
+    "starter": os.environ.get("STRIPE_STARTER_PRICE_ID", "price_1TJjT2DH4sbUuaKWhKwNKo82"),
+    "pro": os.environ.get("STRIPE_PRO_PRICE_ID", "price_1TJjTzDH4sbUuaKWSwn69u09"),
+}
+
+# ---------------------------------------------------------------------------
+# Supabase admin client (service role for webhook updates)
+# ---------------------------------------------------------------------------
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://jorxyrqhjpffkgkjzrjr.supabase.co")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_ANON_KEY = os.environ.get(
+    "SUPABASE_ANON_KEY",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impvcnh5cnFoanBmZmtna2p6cmpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDgyMTksImV4cCI6MjA5MDg4NDIxOX0.0FQUzEPNfFiQnMPfdFDdlBeIb6tm8o10cEAgnMXyUAU",
+)
+
+# Use service role key if available (bypasses RLS), otherwise fallback to anon key
+_sb_key = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
+supabase_admin = create_supabase_client(SUPABASE_URL, _sb_key) if _sb_key else None
+
+if not SUPABASE_SERVICE_ROLE_KEY:
+    logger.warning("SUPABASE_SERVICE_ROLE_KEY not set — webhook subscription updates will fail RLS checks")
 
 # ---------------------------------------------------------------------------
 # Job state management
@@ -2206,6 +2237,243 @@ def _run_auto_clip_task(
             "updated_at": datetime.utcnow().isoformat(),
         })
         save_job(job_id)
+
+
+# ---------------------------------------------------------------------------
+# Stripe Payment Endpoints
+# ---------------------------------------------------------------------------
+
+class CheckoutSessionRequest(BaseModel):
+    plan: str  # "starter" | "pro"
+    user_email: str
+    user_id: str
+
+
+class PortalSessionRequest(BaseModel):
+    user_id: str
+
+
+@app.post("/create-checkout-session", summary="Create Stripe checkout session")
+async def create_checkout_session_endpoint(request: CheckoutSessionRequest) -> Dict[str, Any]:
+    """
+    Create a Stripe Checkout session for subscription payment.
+    Returns the checkout URL to redirect the user to.
+    """
+    price_id = STRIPE_PRICE_IDS.get(request.plan)
+    if not price_id:
+        raise HTTPException(status_code=400, detail=f"Invalid plan: {request.plan}. Must be 'starter' or 'pro'.")
+
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Stripe is not configured on the server.")
+
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="subscription",
+            customer_email=request.user_email,
+            line_items=[{"price": price_id, "quantity": 1}],
+            metadata={
+                "user_id": request.user_id,
+                "supabase_user_id": request.user_id,
+                "plan": request.plan,
+            },
+            success_url="https://tubee.itsthatseason.com/editor?payment=success",
+            cancel_url="https://tubee.itsthatseason.com/pricing?payment=cancelled",
+            allow_promotion_codes=True,
+        )
+        logger.info(f"Checkout session created for user {request.user_id} ({request.plan})")
+        return {"checkout_url": session.url}
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe checkout error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/stripe-webhook", summary="Handle Stripe webhook events")
+async def stripe_webhook_endpoint(request: Request):
+    """
+    Handle Stripe webhook events.
+    Processes: checkout.session.completed, customer.subscription.deleted, customer.subscription.updated
+    """
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+
+    # Verify webhook signature if secret is configured
+    if STRIPE_WEBHOOK_SECRET:
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+        except ValueError:
+            logger.error("Stripe webhook: invalid payload")
+            raise HTTPException(status_code=400, detail="Invalid payload")
+        except stripe.error.SignatureVerificationError:
+            logger.error("Stripe webhook: invalid signature")
+            raise HTTPException(status_code=400, detail="Invalid signature")
+    else:
+        # No webhook secret configured — parse event without verification (dev mode)
+        import json as _json
+        event = stripe.Event.construct_from(_json.loads(payload), stripe.api_key)
+        logger.warning("Stripe webhook: no STRIPE_WEBHOOK_SECRET set, skipping signature verification")
+
+    event_type = event["type"]
+    logger.info(f"Stripe webhook received: {event_type}")
+
+    # --- checkout.session.completed ---
+    if event_type == "checkout.session.completed":
+        session = event["data"]["object"]
+        customer_id = session.get("customer")
+        user_id = session.get("metadata", {}).get("user_id")
+        plan = session.get("metadata", {}).get("plan")
+        subscription_id = session.get("subscription")
+
+        if not user_id:
+            logger.error("Webhook: checkout.session.completed missing user_id in metadata")
+            return {"status": "error", "message": "Missing user_id"}
+
+        # Determine plan from metadata or from line items
+        if not plan:
+            # Try to determine from the subscription's price
+            if subscription_id:
+                try:
+                    sub = stripe.Subscription.retrieve(subscription_id)
+                    price_id = sub["items"]["data"][0]["price"]["id"] if sub["items"]["data"] else None
+                    for p, pid in STRIPE_PRICE_IDS.items():
+                        if pid == price_id:
+                            plan = p
+                            break
+                except Exception:
+                    pass
+            plan = plan or "starter"  # fallback
+
+        logger.info(f"Webhook: activating subscription for user={user_id}, plan={plan}, customer={customer_id}")
+
+        if supabase_admin:
+            try:
+                # Upsert subscription record
+                supabase_admin.table("subscriptions").upsert(
+                    {
+                        "user_id": user_id,
+                        "stripe_customer_id": customer_id,
+                        "stripe_subscription_id": subscription_id,
+                        "plan": plan,
+                        "status": "active",
+                    },
+                    on_conflict="user_id",
+                ).execute()
+                logger.info(f"Webhook: subscription record created/updated for user {user_id}")
+            except Exception as e:
+                logger.error(f"Webhook: failed to update Supabase: {e}")
+        else:
+            logger.error("Webhook: supabase_admin not configured, cannot update subscription")
+
+    # --- customer.subscription.deleted ---
+    elif event_type == "customer.subscription.deleted":
+        subscription = event["data"]["object"]
+        customer_id = subscription.get("customer")
+
+        if supabase_admin and customer_id:
+            try:
+                supabase_admin.table("subscriptions").update(
+                    {"status": "cancelled"}
+                ).eq("stripe_customer_id", customer_id).execute()
+                logger.info(f"Webhook: subscription cancelled for customer {customer_id}")
+            except Exception as e:
+                logger.error(f"Webhook: failed to cancel subscription in Supabase: {e}")
+
+    # --- customer.subscription.updated ---
+    elif event_type == "customer.subscription.updated":
+        subscription = event["data"]["object"]
+        customer_id = subscription.get("customer")
+        status = subscription.get("status")  # active, past_due, canceled, etc.
+
+        if supabase_admin and customer_id:
+            update_data = {"status": status}
+
+            # Check if plan changed
+            if subscription.get("items", {}).get("data"):
+                price_id = subscription["items"]["data"][0]["price"]["id"]
+                for p, pid in STRIPE_PRICE_IDS.items():
+                    if pid == price_id:
+                        update_data["plan"] = p
+                        break
+
+            try:
+                supabase_admin.table("subscriptions").update(
+                    update_data
+                ).eq("stripe_customer_id", customer_id).execute()
+                logger.info(f"Webhook: subscription updated for customer {customer_id}: {update_data}")
+            except Exception as e:
+                logger.error(f"Webhook: failed to update subscription in Supabase: {e}")
+
+    return {"status": "success", "event_type": event_type}
+
+
+@app.get("/subscription-status/{user_id}", summary="Check subscription status")
+async def subscription_status_endpoint(user_id: str) -> Dict[str, Any]:
+    """
+    Check if a user has an active subscription.
+    Returns payment status and plan details.
+    """
+    if not supabase_admin:
+        # Fallback: no Supabase configured, allow access (dev mode)
+        return {"is_paid": True, "plan": None, "status": "no_db"}
+
+    try:
+        result = supabase_admin.table("subscriptions").select("*").eq(
+            "user_id", user_id
+        ).eq("status", "active").limit(1).execute()
+
+        if result.data and len(result.data) > 0:
+            sub = result.data[0]
+            return {
+                "is_paid": True,
+                "plan": sub.get("plan"),
+                "status": sub.get("status"),
+                "stripe_customer_id": sub.get("stripe_customer_id"),
+            }
+        else:
+            return {"is_paid": False, "plan": None, "status": "none"}
+    except Exception as e:
+        logger.error(f"Subscription status check failed for user {user_id}: {e}")
+        # On error, don't block the user
+        return {"is_paid": False, "plan": None, "status": "error", "error": str(e)}
+
+
+@app.post("/create-portal-session", summary="Create Stripe customer portal session")
+async def create_portal_session_endpoint(request: PortalSessionRequest) -> Dict[str, Any]:
+    """
+    Create a Stripe Customer Portal session for managing subscriptions.
+    User can update payment method, change plan, or cancel.
+    """
+    if not stripe.api_key:
+        raise HTTPException(status_code=500, detail="Stripe is not configured on the server.")
+
+    if not supabase_admin:
+        raise HTTPException(status_code=500, detail="Database not configured.")
+
+    # Look up the Stripe customer ID for this user
+    try:
+        result = supabase_admin.table("subscriptions").select(
+            "stripe_customer_id"
+        ).eq("user_id", request.user_id).limit(1).execute()
+
+        if not result.data or not result.data[0].get("stripe_customer_id"):
+            raise HTTPException(status_code=404, detail="No subscription found for this user.")
+
+        customer_id = result.data[0]["stripe_customer_id"]
+
+        session = stripe.billing_portal.Session.create(
+            customer=customer_id,
+            return_url="https://tubee.itsthatseason.com/pricing",
+        )
+
+        return {"portal_url": session.url}
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe portal error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Portal session creation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ---------------------------------------------------------------------------
