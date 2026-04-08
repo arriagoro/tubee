@@ -350,9 +350,6 @@ export default function PricingPage() {
             border: '1px solid rgba(0,170,255,0.12)',
             borderRadius: 16,
           }}>
-            <p style={{ color: '#8899BB', fontSize: 15, marginBottom: 14 }}>
-              Already paid? Click here to access the app →
-            </p>
             <Link
               href="/editor"
               style={{

@@ -41,20 +41,9 @@ export default function EditorPage() {
   useEffect(() => {
     const checkPayment = async () => {
       try {
-        // Check for payment=success query param (just completed checkout)
-        if (typeof window !== 'undefined') {
-          const params = new URLSearchParams(window.location.search);
-          if (params.get('payment') === 'success') {
-            // Just paid — give webhook a moment to process, then allow access
-            setSubscriptionChecked(true);
-            return;
-          }
-        }
-
         const { data: { user: currentUser } } = await (await import('@/lib/supabase')).supabase.auth.getUser();
         if (!currentUser) {
-          // Not logged in — let AuthProvider handle redirect
-          setSubscriptionChecked(true);
+          window.location.replace('/auth/login');
           return;
         }
 
@@ -65,14 +54,18 @@ export default function EditorPage() {
         if (res.ok) {
           const data = await res.json();
           if (!data.is_paid) {
-            // No active subscription — redirect to pricing
-            window.location.href = '/pricing';
+            window.location.replace('/pricing');
             return;
           }
+        } else {
+          // Can't verify — send to pricing to be safe
+          window.location.replace('/pricing');
+          return;
         }
-      } catch (err) {
-        // On error, don't block — allow access
-        console.error('Subscription check failed:', err);
+      } catch {
+        // Can't verify — send to pricing to be safe
+        window.location.replace('/pricing');
+        return;
       }
       setSubscriptionChecked(true);
     };
