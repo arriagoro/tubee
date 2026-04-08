@@ -202,7 +202,7 @@ def _generate_macos_tts(text: str, output_path: str) -> Dict:
 
     try:
         # Generate AIFF with macOS say
-        cmd_say = ["say", "-o", aiff_path, "--data-format=LEF32@22050", text]
+        cmd_say = ["/usr/bin/say", "-o", aiff_path, text]
         result = subprocess.run(cmd_say, capture_output=True, text=True, timeout=60)
         if result.returncode != 0:
             raise RuntimeError(f"macOS say failed: {result.stderr}")
