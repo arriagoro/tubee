@@ -26,7 +26,7 @@ KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "")
 # Premium: Claude Opus (for complex prompts)
 KIMI_MODEL = "kimi-k2-turbo-preview"
 CLAUDE_MODEL_FAST = os.environ.get("TUBEE_MODEL_FAST", "claude-haiku-4-5-20251001")
-CLAUDE_MODEL_PREMIUM = os.environ.get("TUBEE_MODEL_PREMIUM", "claude-sonnet-4-6")
+CLAUDE_MODEL_PREMIUM = os.environ.get("TUBEE_MODEL_PREMIUM", "claude-haiku-4-5-20251001")  # Never use Sonnet/Opus
 
 # Complexity keywords that trigger premium model routing
 _COMPLEX_KEYWORDS = {
