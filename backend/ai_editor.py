@@ -372,6 +372,10 @@ def get_edit_decisions(
         response = client.messages.create(**msg_kwargs)
 
         raw = response.content[0].text.strip()
+        # Log token usage for cost tracking
+        if hasattr(response, 'usage'):
+            usage = response.usage
+            logger.info(f"Claude tokens: input={usage.input_tokens} output={usage.output_tokens} cache_read={getattr(usage,'cache_read_input_tokens',0)}")
         logger.debug(f"Claude raw response: {raw[:500]}...")
 
         # Parse JSON response
