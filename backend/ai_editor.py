@@ -52,12 +52,10 @@ def smart_route_model(user_prompt: str, scene_count: int) -> str:
     many_scenes = scene_count > 15
     detailed_prompt = len(user_prompt) > 200
     
-    if has_complex_keywords or (many_scenes and detailed_prompt):
-        logger.info(f"Smart routing → Opus 4.6 (complex edit detected)")
-        return CLAUDE_MODEL_PREMIUM
-    
-    logger.info(f"Smart routing → Haiku (standard edit)")
-    return CLAUDE_MODEL_FAST
+    # Always use Kimi K2 (primary) or Haiku fallback — never Opus
+    # Opus costs 5x more for same quality on edit decisions
+    logger.info(f"Smart routing → Kimi K2 (cost optimized)")
+    return CLAUDE_MODEL_FAST  # Kimi handles this via the try-first block above
 
 
 def build_vision_edit_prompt(
@@ -359,16 +357,19 @@ def get_edit_decisions(
         logger.info(f"Sending edit request to Claude ({selected_model})...")
         logger.debug(f"Prompt length: {len(prompt)} chars")
 
-        response = client.messages.create(
-            model=selected_model,
-            max_tokens=4096,
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-        )
+        # Split prompt into cacheable system part + variable user part for 90% cost reduction
+        system_part = prompt[:1000] if len(prompt) > 1000 else None
+        user_part = prompt[1000:] if len(prompt) > 1000 else prompt
+
+        msg_kwargs = {
+            "model": selected_model,
+            "max_tokens": 2048,  # Reduced from 4096 - edit decisions don't need that many tokens
+            "messages": [{"role": "user", "content": user_part}],
+        }
+        if system_part:
+            msg_kwargs["system"] = [{"type": "text", "text": system_part, "cache_control": {"type": "ephemeral"}}]
+
+        response = client.messages.create(**msg_kwargs)
 
         raw = response.content[0].text.strip()
         logger.debug(f"Claude raw response: {raw[:500]}...")
