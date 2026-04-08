@@ -430,10 +430,10 @@ export default function EditorPage() {
         }}
       >
         {videoFiles.length === 0 ? (
-          <>📹 Select Videos</>
+          <>📹 Select Videos <span style={{ fontSize: 12, opacity: 0.7 }}>(max 8)</span></>
         ) : (
           <span style={{ color: '#00AAFF' }}>
-            ✅ {videoFiles.length} video{videoFiles.length > 1 ? 's' : ''} ready
+            ✅ {videoFiles.length}/8 videos ready
           </span>
         )}
       </button>
