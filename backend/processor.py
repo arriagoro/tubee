@@ -492,10 +492,13 @@ def _extract_segments(
             "-c:v", DEFAULT_VIDEO_CODEC,
             "-crf", quality_cfg["crf"],
             "-preset", quality_cfg["preset"],
+            "-b:v", quality_cfg["video_bitrate"],
             "-maxrate", quality_cfg["max_bitrate"],
-            "-bufsize", quality_cfg["max_bitrate"],
-            "-vf", f"scale={output_width}:{output_height}:force_original_aspect_ratio=increase,"
-                   f"crop={output_width}:{output_height},unsharp=5:5:1.0:5:5:0.0",
+            "-bufsize", "20M",
+            "-vf", f"scale={output_width}:{output_height}:force_original_aspect_ratio=increase:flags=lanczos,"
+                   f"crop={output_width}:{output_height},"
+                   f"eq=contrast=1.05:brightness=0.02:saturation=1.1,"
+                   f"unsharp=5:5:0.8:3:3:0.0",
             "-r", str(DEFAULT_FPS),
             "-pix_fmt", "yuv420p",
             "-c:a", DEFAULT_AUDIO_CODEC,
