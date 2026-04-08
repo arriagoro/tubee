@@ -174,16 +174,14 @@ export default function VibePage() {
             {[
               { label: 'Edit', href: '/editor' },
               { label: 'Generate', href: '/generate' },
-              { label: 'Vibe', href: '/vibe' },
               { label: 'Captions', href: '/captions' },
               { label: 'Clipper', href: '/clipper' },
-              { label: 'Upscale', href: '/upscale' },
             ].map((tab) => (
               <Link
                 key={tab.label}
                 href={tab.href}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  tab.label === 'Vibe'
+                  false
                     ? 'bg-accent text-white'
                     : 'text-secondary hover:text-white hover:bg-white/5'
                 }`}

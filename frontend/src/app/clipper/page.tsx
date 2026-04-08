@@ -239,13 +239,6 @@ export default function ClipperPage() {
           }}>
             ✨ Generate
           </Link>
-          <Link href="/vibe" style={{
-            flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-            background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
-            borderRight: '1px solid rgba(0,170,255,0.15)',
-          }}>
-            🎨 Vibe
-          </Link>
           <Link href="/captions" style={{
             flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
             background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
@@ -260,12 +253,6 @@ export default function ClipperPage() {
           }}>
             🎬 Clipper
           </div>
-          <Link href="/upscale" style={{
-            flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-            background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
-          }}>
-            🔍 Upscale
-          </Link>
         </nav>
 
         {/* Header */}

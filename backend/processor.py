@@ -18,13 +18,14 @@ import logging
 import tempfile
 import subprocess
 import shutil
+import random
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
 from scene_detect import detect_scenes
 from beat_sync import detect_beats
 from ai_editor import get_edit_decisions
-from effects import apply_style_preset, apply_transitions_to_sequence
+from effects import apply_style_preset
 
 logger = logging.getLogger(__name__)
 
@@ -139,8 +140,27 @@ def is_audio_file(path: str) -> bool:
 
 # Valid transition styles
 TRANSITION_STYLES = {
-    "hard_cut", "whip_pan", "circle_reveal", "swipe",
-    "zoom_blur", "glitch", "mixed", "fade",
+    "auto", "hard_cut", "smooth", "whip_pan", "circle", "circle_reveal",
+    "swipe", "zoom_blur", "glitch", "mixed", "fade",
+}
+
+XFADER_TRANSITIONS = {
+    "smooth": "fade",
+    "fade": "fade",
+    "whip_pan": "smoothleft",
+    "swipe": "slideleft",
+    "swipe_left": "slideleft",
+    "zoom_blur": "fadeblack",
+    "glitch": "pixelize",
+    "circle": "circleopen",
+    "circle_reveal": "circleopen",
+}
+
+AUTO_SMOOTH_KEYWORDS = {
+    "cinematic", "clean", "smooth", "story", "storytelling", "documentary", "vlog", "minimal"
+}
+AUTO_HARD_CUT_KEYWORDS = {
+    "fast", "fast cuts", "hype", "hyped", "hype edit", "music video", "high energy", "energetic"
 }
 
 
@@ -171,9 +191,10 @@ def process_job(
         progress_callback: Optional callback(stage: str, pct: int) for progress updates.
         style_preset: Optional style preset to apply to the final video before audio mix.
                       Options: "cole_bennett", "cinematic", "vintage", "clean", "neon".
-        transition_style: Transition between clips. Options: "hard_cut" (default),
-                          "whip_pan", "circle_reveal", "swipe", "zoom_blur",
-                          "glitch", "mixed", "fade".
+        transition_style: Transition between clips. Options: "smooth" (default),
+                          "hard_cut", "auto", "whip_pan", "circle",
+                          "circle_reveal", "swipe", "zoom_blur", "glitch",
+                          "mixed", "fade".
         export_quality: Export quality tier — "1080p" (default), "2k", or "4k".
         output_format: Output format — "reels" (9:16), "landscape" (16:9), or "square" (1:1).
         frame_analysis: When True, extract video frames for Kimi K2 visual analysis.
@@ -324,32 +345,20 @@ def process_job(
 
         progress("Concatenating clips", 75)
 
-        # --- STEP 4b (optional): Apply transitions between segments ---
-        effective_transition = transition_style or "hard_cut"
-        # Normalise "swipe" → "swipe_left"
-        if effective_transition == "swipe":
-            effective_transition = "swipe_left"
+        # --- STEP 4b: Concatenate segments with transitions baked into the FFmpeg graph ---
+        requested_transition = transition_style or "smooth"
+        effective_transition = _resolve_transition_style(requested_transition, style_preset, user_prompt)
 
         concat_video = os.path.join(tmp_dir, "concat.mp4")
-        trans_applied = False
-
-        if effective_transition != "hard_cut" and len(segment_files) >= 2:
-            progress(f"Applying '{effective_transition}' transitions", 72)
-            trans_result = apply_transitions_to_sequence(
-                segment_files,
-                concat_video,
-                transition_type=effective_transition,
-                transition_duration=0.3,
-            )
-            if trans_result:
-                trans_applied = True
-                logger.info(f"[{job_id}] Transitions applied: {effective_transition}")
-            else:
-                logger.warning(f"[{job_id}] Transitions returned None, falling back to hard cut concat")
-
-        if not trans_applied:
-            # Build intermediate video with plain concat (no transitions)
-            _concat_segments(segment_files, concat_video)
+        progress_label = "hard cuts" if effective_transition == "hard_cut" else f"{effective_transition} transitions"
+        progress(f"Concatenating clips with {progress_label}", 72)
+        _concat_segments_with_transitions(
+            segment_files,
+            concat_video,
+            transition_style=effective_transition,
+            transition_duration=0.3,
+            quality_cfg=quality_cfg,
+        )
 
         # --- STEP 5 (optional): Apply style preset ---
         styled_video = concat_video
@@ -453,7 +462,7 @@ def _extract_segments(
         List of paths to extracted segment MP4 files, in order.
     """
     if quality_cfg is None:
-        quality_cfg = QUALITY_TIERS["1080p"]
+        quality_cfg = quality_cfg or QUALITY_TIERS["1080p"]
     segment_files = []
 
     for clip in clips_plan:
@@ -524,20 +533,38 @@ def _extract_segments(
     return segment_files
 
 
-def _concat_segments(segment_files: List[str], output_path: str) -> None:
-    """
-    Concatenate video segments using FFmpeg concat demuxer.
+def _resolve_transition_style(
+    transition_style: Optional[str],
+    style_preset: Optional[str] = None,
+    user_prompt: Optional[str] = None,
+) -> str:
+    """Normalize transition style and resolve `auto` into a concrete mode."""
+    style = (transition_style or "smooth").strip().lower()
 
-    Args:
-        segment_files: Ordered list of segment file paths.
-        output_path: Output MP4 path.
-    """
-    # Write concat list file
+    if style in {"none", "cut"}:
+        style = "hard_cut"
+    elif style == "circle_reveal":
+        style = "circle"
+    elif style == "swipe_left":
+        style = "swipe"
+
+    if style != "auto":
+        return style if style in TRANSITION_STYLES else "smooth"
+
+    text_blob = " ".join(filter(None, [style_preset, user_prompt])).lower()
+    if any(keyword in text_blob for keyword in AUTO_HARD_CUT_KEYWORDS):
+        return "hard_cut"
+    if any(keyword in text_blob for keyword in AUTO_SMOOTH_KEYWORDS):
+        return "smooth"
+    return "smooth"
+
+
+def _concat_segments(segment_files: List[str], output_path: str) -> None:
+    """Concatenate video segments using FFmpeg concat demuxer."""
     list_path = output_path + ".txt"
     with open(list_path, "w") as f:
         for seg in segment_files:
-            # Escape single quotes in paths
-            safe_path = seg.replace("'", "'\\''")
+            safe_path = seg.replace("'", "'\''")
             f.write(f"file '{safe_path}'\n")
 
     cmd = [
@@ -555,9 +582,109 @@ def _concat_segments(segment_files: List[str], output_path: str) -> None:
 
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg concat failed: {result.stderr[-500:]}")
+    if not os.path.exists(output_path) or os.path.getsize(output_path) <= 0:
+        raise RuntimeError("FFmpeg concat produced an empty output file")
 
     logger.info(f"Concatenated {len(segment_files)} segments → {output_path}")
 
+
+def _concat_segments_with_transitions(
+    segment_files: List[str],
+    output_path: str,
+    transition_style: str = "hard_cut",
+    transition_duration: float = 0.3,
+    quality_cfg: Optional[Dict[str, str]] = None,
+) -> None:
+    """
+    Concatenate segments and apply xfade transitions during the FFmpeg render.
+
+    Falls back to hard-cut concat if xfade fails for any reason.
+    """
+    if not segment_files:
+        raise ValueError("No segment files provided for concatenation")
+
+    normalized_style = _resolve_transition_style(transition_style)
+    if len(segment_files) == 1 or normalized_style == "hard_cut":
+        _concat_segments(segment_files, output_path)
+        return
+
+    durations = [_get_video_duration(seg) for seg in segment_files]
+    if any(duration <= 0 for duration in durations):
+        logger.warning("One or more segment durations could not be determined; falling back to hard cuts")
+        _concat_segments(segment_files, output_path)
+        return
+
+    transition_pool = ["smooth", "whip_pan", "swipe", "zoom_blur", "glitch", "circle"]
+    selected_styles: List[str] = []
+    for _ in range(len(segment_files) - 1):
+        if normalized_style == "mixed":
+            selected_styles.append(random.choice(transition_pool))
+        else:
+            selected_styles.append(normalized_style)
+
+    effective_duration = max(0.05, float(transition_duration))
+    offsets: List[float] = []
+    cumulative = durations[0]
+    for idx in range(len(segment_files) - 1):
+        offset = max(0.0, cumulative - effective_duration)
+        offsets.append(offset)
+        cumulative += durations[idx + 1] - effective_duration
+
+    filter_parts: List[str] = []
+    current_video_stream = "[0:v]"
+    current_audio_stream = "[0:a]"
+    for idx, style_name in enumerate(selected_styles, start=1):
+        transition_name = XFADER_TRANSITIONS.get(style_name, "fade")
+        video_output_label = f"[v{idx}]" if idx < len(segment_files) - 1 else "[vout]"
+        audio_output_label = f"[a{idx}]" if idx < len(segment_files) - 1 else "[aout]"
+        filter_parts.append(
+            f"{current_video_stream}[{idx}:v]xfade=transition={transition_name}:duration={effective_duration}:offset={offsets[idx - 1]:.3f}{video_output_label}"
+        )
+        filter_parts.append(
+            f"{current_audio_stream}[{idx}:a]acrossfade=d={effective_duration}:c1=tri:c2=tri{audio_output_label}"
+        )
+        current_video_stream = video_output_label
+        current_audio_stream = audio_output_label
+
+    quality_cfg = quality_cfg or QUALITY_TIERS["1080p"]
+    cmd = ["ffmpeg", "-y"]
+    for seg in segment_files:
+        cmd.extend(["-i", seg])
+    cmd.extend([
+        "-filter_complex", ";".join(filter_parts),
+        "-map", "[vout]",
+        "-map", "[aout]",
+        "-c:v", DEFAULT_VIDEO_CODEC,
+        "-crf", quality_cfg["crf"],
+        "-preset", quality_cfg["preset"],
+        "-pix_fmt", "yuv420p",
+        "-c:a", DEFAULT_AUDIO_CODEC,
+        "-b:a", DEFAULT_AUDIO_BITRATE,
+        "-movflags", "+faststart",
+        output_path,
+    ])
+
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1200)
+    if result.returncode != 0 or not os.path.exists(output_path) or os.path.getsize(output_path) <= 0:
+        logger.warning(
+            "xfade concat failed for style '%s'; falling back to hard cuts. Error: %s",
+            normalized_style,
+            (result.stderr or "")[-500:],
+        )
+        try:
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+        except OSError:
+            pass
+        _concat_segments(segment_files, output_path)
+        return
+
+    logger.info(
+        "Concatenated %d segments with xfade transitions (%s) → %s",
+        len(segment_files),
+        normalized_style,
+        output_path,
+    )
 
 def _export_final(
     video_path: str,
@@ -577,7 +704,7 @@ def _export_final(
         quality_cfg: Quality tier settings (crf, preset, bitrate).
     """
     if quality_cfg is None:
-        quality_cfg = QUALITY_TIERS["1080p"]
+        quality_cfg = quality_cfg or QUALITY_TIERS["1080p"]
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     if music_file:
@@ -838,7 +965,7 @@ if __name__ == "__main__":
         print("  python processor.py output.mp4 clip1.mp4 clip2.mp4 --music song.mp3 --prompt 'Fast-paced highlight reel' --style cole_bennett --transition whip_pan")
         print()
         print("Style presets: cole_bennett, cinematic, vintage, clean, neon")
-        print("Transitions:   hard_cut, whip_pan, circle_reveal, swipe, zoom_blur, glitch, mixed, fade")
+        print("Transitions:   smooth, hard_cut, auto, whip_pan, circle, swipe, zoom_blur, glitch, mixed, fade")
         sys.exit(1)
 
     output = sys.argv[1]

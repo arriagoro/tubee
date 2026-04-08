@@ -137,13 +137,6 @@ export default function UpscalePage() {
         }}>
           ✨ Generate
         </Link>
-        <Link href="/vibe" style={{
-          flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
-          background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
-          borderRight: '1px solid rgba(0,170,255,0.15)',
-        }}>
-          🎨 Vibe
-        </Link>
         <Link href="/captions" style={{
           flex: 1, padding: '14px 0', textAlign: 'center', textDecoration: 'none',
           background: '#0D1526', color: '#8899BB', fontWeight: 600, fontSize: 15,
@@ -158,12 +151,6 @@ export default function UpscalePage() {
         }}>
           🎬 Clipper
         </Link>
-        <div style={{
-          flex: 1, padding: '14px 0', textAlign: 'center',
-          background: '#00AAFF', color: '#fff', fontWeight: 700, fontSize: 15,
-        }}>
-          🔍 Upscale
-        </div>
       </nav>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 28 }}>
