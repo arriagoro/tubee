@@ -4,9 +4,14 @@ export const SKIP_NGROK = { 'ngrok-skip-browser-warning': 'true' };
 
 async function getApiBase(): Promise<string> {
   try {
-    const r = await fetch(`${RAILWAY}/`, { signal: AbortSignal.timeout(3000) });
-    if (r.ok) return RAILWAY;
+    // Check Railway health AND ffmpeg availability
+    const r = await fetch(`${RAILWAY}/health`, { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      const data = await r.json();
+      if (data.ffmpeg === true) return RAILWAY;
+    }
   } catch {}
+  // Fall back to ngrok (Mac Mini with FFmpeg)
   return NGROK;
 }
 

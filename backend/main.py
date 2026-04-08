@@ -245,6 +245,13 @@ async def startup_event():
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
+@app.get("/health")
+async def health_check():
+    import shutil
+    ffmpeg_ok = bool(shutil.which("ffmpeg") and shutil.which("ffprobe"))
+    return {"status": "running", "ffmpeg": ffmpeg_ok}
+
 @app.get("/")
 async def root():
     return {"name": "Tubee API", "version": "1.0.0", "status": "running"}
