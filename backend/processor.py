@@ -488,19 +488,22 @@ def _extract_segments(
             "-ss", str(clip_start),
             "-i", source_file,
             "-t", str(duration),
-            # Re-encode to ensure consistent format for concat
+            # Re-encode — auto-rotate handles iPhone rotation metadata
             "-c:v", DEFAULT_VIDEO_CODEC,
             "-crf", quality_cfg["crf"],
             "-preset", quality_cfg["preset"],
             "-b:v", quality_cfg["video_bitrate"],
             "-maxrate", quality_cfg["max_bitrate"],
             "-bufsize", "20M",
-            "-vf", f"scale={output_width}:{output_height}:force_original_aspect_ratio=increase:flags=lanczos,"
-                   f"crop={output_width}:{output_height},"
-                   f"eq=contrast=1.05:brightness=0.02:saturation=1.1,"
-                   f"unsharp=5:5:0.8:3:3:0.0",
+            # Use transpose filter to handle rotation, then scale/crop cleanly
+            "-vf", (
+                f"scale={output_width}:{output_height}:force_original_aspect_ratio=increase:flags=lanczos,"
+                f"crop={output_width}:{output_height},"
+                f"setsar=1"
+            ),
             "-r", str(DEFAULT_FPS),
             "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
             "-c:a", DEFAULT_AUDIO_CODEC,
             "-b:a", DEFAULT_AUDIO_BITRATE,
             "-ar", "44100",

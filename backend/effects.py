@@ -981,13 +981,13 @@ def apply_style_preset(
         },
         "cinematic": {
             "grade": grade_cinematic,
-            "grain": 12,
-            "vignette": 0.35,
+            "grain": 0,
+            "vignette": 0.0,
             "zoom_beats": False,
             "zoom_intensity": 1.0,
             "flash_beats": False,
             "rgb_split": 0,
-            "letterbox": "2.35:1",
+            "letterbox": None,  # No letterbox for vertical/Reels format
         },
         "vintage": {
             "grade": grade_vintage,
@@ -1012,7 +1012,7 @@ def apply_style_preset(
         "clean": {
             "grade": grade_cinematic,  # Subtle grade
             "grain": 0,
-            "vignette": 0.2,
+            "vignette": 0.0,
             "zoom_beats": False,
             "zoom_intensity": 1.0,
             "flash_beats": False,
