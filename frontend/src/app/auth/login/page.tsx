@@ -1,9 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-
-const SUPABASE_URL = 'https://jorxyrqhjpffkgkjzrjr.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impvcnh5cnFoanBmZmtna2p6cmpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDgyMTksImV4cCI6MjA5MDg4NDIxOX0.0FQUzEPNfFiQnMPfdFDdlBeIb6tm8o10cEAgnMXyUAU';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -17,22 +15,19 @@ export default function LoginPage() {
     setLoading(true);
     setStatus('Signing in...');
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
       });
-      const data = await res.json();
-      if (res.ok && data.access_token) {
-        // Store session
-        localStorage.setItem('sb-access-token', data.access_token);
-        localStorage.setItem('sb-refresh-token', data.refresh_token);
-        setStatus('Success! Redirecting...');
-        setTimeout(() => { window.location.href = '/editor'; }, 500);
-      } else {
-        setStatus('Wrong email or password. Try again.');
+
+      if (error || !data.session) {
+        setStatus(error?.message || 'Wrong email or password. Try again.');
         setLoading(false);
+        return;
       }
+
+      setStatus('Success! Redirecting...');
+      setTimeout(() => { window.location.href = '/editor'; }, 500);
     } catch {
       setStatus('Connection error. Try again.');
       setLoading(false);
@@ -42,17 +37,15 @@ export default function LoginPage() {
   async function handleReset() {
     if (!email) { setStatus('Enter your email first'); return; }
     setLoading(true);
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_ANON, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), redirectTo: 'https://tubee.itsthatseason.com/auth/reset-password' }),
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: 'https://tubee.itsthatseason.com/auth/reset-password',
     });
     setLoading(false);
-    if (res.ok) {
+    if (!error) {
       setStatus('Reset email sent! Check your inbox.');
       setShowReset(false);
     } else {
-      setStatus('Could not send reset email. Try again.');
+      setStatus(error.message || 'Could not send reset email. Try again.');
     }
   }
 
