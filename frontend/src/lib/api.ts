@@ -4,19 +4,28 @@ export const SKIP_NGROK = { 'ngrok-skip-browser-warning': 'true' };
 
 async function getApiBase(): Promise<string> {
   try {
-    // Check Railway health AND ffmpeg availability
+    // Video processing requires ffmpeg, so only use Railway when it's fully ready
     const r = await fetch(`${RAILWAY}/health`, { signal: AbortSignal.timeout(3000) });
     if (r.ok) {
       const data = await r.json();
       if (data.ffmpeg === true) return RAILWAY;
     }
   } catch {}
-  // Fall back to ngrok (Mac Mini with FFmpeg)
+  return NGROK;
+}
+
+async function getAuthApiBase(): Promise<string> {
+  try {
+    // Auth, subscriptions, checkout, and portal do NOT require ffmpeg
+    const r = await fetch(`${RAILWAY}/health`, { signal: AbortSignal.timeout(3000) });
+    if (r.ok) return RAILWAY;
+  } catch {}
   return NGROK;
 }
 
 // Cache the result
 let _apiBase: string | null = null;
+let _authApiBase: string | null = null;
 let _isRailway: boolean = false;
 
 export async function apiBase(): Promise<string> {
@@ -27,6 +36,13 @@ export async function apiBase(): Promise<string> {
   return _apiBase;
 }
 
+export async function authApiBase(): Promise<string> {
+  if (!_authApiBase) {
+    _authApiBase = await getAuthApiBase();
+  }
+  return _authApiBase;
+}
+
 export function isRailwayActive(): boolean {
   return _isRailway;
 }
@@ -34,6 +50,7 @@ export function isRailwayActive(): boolean {
 /** Force re-check on next call (e.g. after network change) */
 export function resetApiBase(): void {
   _apiBase = null;
+  _authApiBase = null;
   _isRailway = false;
 }
 
@@ -294,7 +311,7 @@ export interface CheckoutSessionResponse {
 }
 
 export async function createCheckoutSession(req: CheckoutSessionRequest): Promise<CheckoutSessionResponse> {
-  const API_BASE = await apiBase();
+  const API_BASE = await authApiBase();
   const res = await fetch(`${API_BASE}/create-checkout-session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },
@@ -315,7 +332,7 @@ export interface SubscriptionStatusResponse {
 }
 
 export async function getSubscriptionStatus(userId: string): Promise<SubscriptionStatusResponse> {
-  const API_BASE = await apiBase();
+  const API_BASE = await authApiBase();
   const res = await fetch(`${API_BASE}/subscription-status/${userId}`, {
     headers: SKIP_NGROK,
   });
@@ -328,7 +345,7 @@ export interface PortalSessionResponse {
 }
 
 export async function createPortalSession(userId: string): Promise<PortalSessionResponse> {
-  const API_BASE = await apiBase();
+  const API_BASE = await authApiBase();
   const res = await fetch(`${API_BASE}/create-portal-session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },

@@ -3,11 +3,35 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
-import { apiBase, isRailwayActive, SKIP_NGROK } from '@/lib/api';
+import { apiBase, authApiBase, isRailwayActive, SKIP_NGROK } from '@/lib/api';
 
 const HEADERS = SKIP_NGROK;
 
 type Stage = 'idle' | 'uploading' | 'editing' | 'polling' | 'done' | 'error';
+
+const STYLE_OPTIONS = [
+  { value: 'cinematic', label: 'Cinematic' },
+  { value: 'music video', label: 'Music Video' },
+  { value: 'hype', label: 'Hype' },
+  { value: 'retro', label: 'Retro' },
+  { value: 'minimal', label: 'Clean' },
+];
+
+const DURATION_OPTIONS = [
+  { value: 15, label: '15s' },
+  { value: 30, label: '30s' },
+  { value: 45, label: '45s' },
+  { value: 60, label: '60s' },
+];
+
+const TRANSITION_OPTIONS = [
+  { value: 'mixed', label: 'Smart Mix' },
+  { value: 'hard_cut', label: 'Hard Cuts' },
+  { value: 'whip_pan', label: 'Whip Pan' },
+  { value: 'zoom_blur', label: 'Zoom Blur' },
+  { value: 'glitch', label: 'Glitch' },
+  { value: 'fade', label: 'Fade' },
+];
 
 export default function EditorPage() {
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
@@ -21,7 +45,7 @@ export default function EditorPage() {
           return;
         }
 
-        const API = await apiBase();
+        const API = await authApiBase();
         const res = await fetch(`${API}/subscription-status/${currentUser.id}`, {
           headers: HEADERS,
         });
@@ -50,6 +74,9 @@ export default function EditorPage() {
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
   const [musicFile, setMusicFile] = useState<File | null>(null);
   const [prompt, setPrompt] = useState('');
+  const [selectedStyle, setSelectedStyle] = useState('cinematic');
+  const [targetDuration, setTargetDuration] = useState<number>(30);
+  const [transitionStyle, setTransitionStyle] = useState('mixed');
   const [stage, setStage] = useState<Stage>('idle');
   const [progress, setProgress] = useState(0);
   const [statusMsg, setStatusMsg] = useState('');
@@ -171,10 +198,11 @@ export default function EditorPage() {
         body: JSON.stringify({
           job_id: id,
           prompt: prompt.trim(),
-          style: 'cinematic',
+          target_duration: targetDuration,
+          style: selectedStyle,
           export_quality: '1080p',
           output_format: 'reels',
-          transition_style: 'smooth',
+          transition_style: transitionStyle,
           frame_analysis: true,
         }),
       });
@@ -204,6 +232,9 @@ export default function EditorPage() {
     setVideoFiles([]);
     setMusicFile(null);
     setPrompt('');
+    setSelectedStyle('cinematic');
+    setTargetDuration(30);
+    setTransitionStyle('mixed');
     setStage('idle');
     setProgress(0);
     setStatusMsg('');
@@ -408,6 +439,89 @@ export default function EditorPage() {
             {musicFile ? `🎵 ${musicFile.name}` : '🎵 Add Music (optional)'}
           </button>
 
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ color: '#8EA2C8', fontSize: 13, marginBottom: 10, fontWeight: 600 }}>Style</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+              {STYLE_OPTIONS.map((option) => {
+                const active = selectedStyle === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSelectedStyle(option.value)}
+                    disabled={isWorking}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 999,
+                      border: active ? '1px solid #00AAFF' : '1px solid rgba(0,170,255,0.18)',
+                      background: active ? 'rgba(0,170,255,0.12)' : '#0D1526',
+                      color: active ? '#DDF5FF' : '#8EA2C8',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: isWorking ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ color: '#8EA2C8', fontSize: 13, marginBottom: 10, fontWeight: 600 }}>Target length</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+              {DURATION_OPTIONS.map((option) => {
+                const active = targetDuration === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setTargetDuration(option.value)}
+                    disabled={isWorking}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 999,
+                      border: active ? '1px solid #00AAFF' : '1px solid rgba(0,170,255,0.18)',
+                      background: active ? 'rgba(0,170,255,0.12)' : '#0D1526',
+                      color: active ? '#DDF5FF' : '#8EA2C8',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: isWorking ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ color: '#8EA2C8', fontSize: 13, marginBottom: 10, fontWeight: 600 }}>Transition feel</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+              {TRANSITION_OPTIONS.map((option) => {
+                const active = transitionStyle === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setTransitionStyle(option.value)}
+                    disabled={isWorking}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 999,
+                      border: active ? '1px solid #00AAFF' : '1px solid rgba(0,170,255,0.18)',
+                      background: active ? 'rgba(0,170,255,0.12)' : '#0D1526',
+                      color: active ? '#DDF5FF' : '#8EA2C8',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: isWorking ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <textarea
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
@@ -417,7 +531,7 @@ export default function EditorPage() {
             style={{
               width: '100%',
               padding: 20,
-              marginBottom: 18,
+              marginBottom: 8,
               background: '#09111F',
               border: '1px solid rgba(0,170,255,0.18)',
               borderRadius: 18,
@@ -431,6 +545,10 @@ export default function EditorPage() {
               minHeight: 170,
             }}
           />
+
+          <div style={{ color: '#6E84AA', fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>
+            Quick tip: strongest reels usually open with the best shot in the first second, use 1-3 second cuts, and land major cuts on the beat.
+          </div>
 
           {error && (
             <div

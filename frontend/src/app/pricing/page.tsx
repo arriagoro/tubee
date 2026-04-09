@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { supabase } from '@/lib/supabase';
-import { apiBase, SKIP_NGROK } from '@/lib/api';
+import { apiBase, authApiBase, SKIP_NGROK } from '@/lib/api';
 import { grantFreeTrial } from '@/lib/auth';
 
 const plans = [
@@ -59,7 +59,7 @@ export default function PricingPage() {
 
     const checkSubscription = async () => {
       try {
-        const API = await apiBase();
+        const API = await authApiBase();
         const res = await fetch(`${API}/subscription-status/${user.id}`, {
           headers: SKIP_NGROK,
         });
@@ -100,7 +100,7 @@ export default function PricingPage() {
         return;
       }
 
-      const API = await apiBase();
+      const API = await authApiBase();
       const res = await fetch(`${API}/create-checkout-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },
@@ -133,7 +133,7 @@ export default function PricingPage() {
     setError('');
 
     try {
-      const API = await apiBase();
+      const API = await authApiBase();
       const res = await fetch(`${API}/create-portal-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...SKIP_NGROK },
