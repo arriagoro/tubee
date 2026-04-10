@@ -1,5 +1,142 @@
 # Tubee Daily Improvements
 
+## 2026-04-10 (Friday)
+
+### Research Summary
+
+**Latest AI video editing / API signals (past week)**
+- Runway shipped **Seedance 2.0** on **April 7, 2026**, expanding text/image/video/audio-driven generation and editing. Takeaway for Tubee: users increasingly expect hybrid workflows, not just trimming, but smart inserts, restyles, and remixing.
+- Anthropic shipped **Claude Managed Agents** on **April 8** and the **advisor tool** public beta on **April 9**. For Tubee, the practical win is not agents themselves, but the signal that Anthropic is leaning harder into long-horizon orchestration and better quality control patterns.
+- Anthropic's recent platform notes still make **Sonnet 4.6 / Opus 4.6 + automatic caching** the strongest near-term quality/cost lever for edit-planning prompts.
+
+**Claude / Anthropic relevance**
+- Best model move right now is still: keep cheaper/default routing for normal edits, but reserve **Sonnet 4.6** for harder creative briefs and premium edits.
+- **Automatic caching** is still a big untapped Tubee win because edit prompts reuse a lot of structure. That should lower cost and latency once wired into the backend calls.
+- The new **advisor tool** suggests a useful future pattern: one fast planner/executor model plus a stronger reviewer for final edit decisions or QA.
+
+**Trending edit styles (Instagram Reels / TikTok right now)**
+- Instagram trend roundups this week are full of **freeze-frame overlays**, **zoom-to-reveal / sign-reveal interactions**, and **simple interactive hooks** that reward attention in the first second.
+- Short-form content is still leaning into **hook-first pacing**, **quick payoff reveals**, **UGC authenticity**, and **motion-led transitions** over polished-but-flat slideshow edits.
+- The safest Tubee direction today is not heavier effects spam, but better hook selection, faster pacing controls, and a few high-signal pattern interrupts.
+
+### Today's Improvements (actionable)
+
+#### 1. Add quick-start prompt templates in the editor
+**Priority:** High | **Status:** ✅ Implemented
+Added one-tap prompt starters for:
+- Viral reel
+- Talking head
+- Product hype
+- Cinematic mini
+
+This makes the app much faster on mobile and improves prompt quality without forcing users to write detailed creative direction from scratch.
+
+#### 2. Expose output format selection in the editor UI
+**Priority:** High | **Status:** ✅ Implemented
+The backend already supports multiple formats, but the editor was hardcoded to reels. I added tap-friendly format chips for:
+- 9:16 Reels
+- 1:1 Square
+- 16:9 Landscape
+
+This removes a silent limitation and makes cross-platform exports usable from the main editor.
+
+#### 3. Expose export quality selection in the editor UI
+**Priority:** Medium | **Status:** ✅ Implemented
+Added quality chips for:
+- 1080p
+- 2K
+- 4K
+
+This gives creators clearer control over output speed vs quality and sets up an easy premium-quality upsell path later.
+
+#### 4. Add opening hook preference control in the editor
+**Priority:** High | **Status:** ✅ Implemented
+Added a lightweight hook picker in the editor so users can bias the opening toward:
+- Best shot first
+- Fastest hook
+- Best line first
+
+This is not the full 3-preview hook chooser yet, but it immediately improves first-second intent and pushes Tubee toward stronger short-form openings.
+
+#### 5. Tighten Tubee's next best product moves
+**Priority:** High | **Status:** Planned
+Top improvements worth building next:
+1. **True auto hook picker**: preview 3 possible opening shots before full render.
+2. **Prompt caching for Anthropic**: reduce repeated prompt cost/latency.
+3. **Pattern interrupt engine**: optional freeze, speed ramp, flash, zoom moments every 5-7s.
+4. **Caption-first social mode**: auto-enable strong captions + hook text for talking-head edits.
+5. **Edit QA pass**: lightweight second-model review that flags boring openings, long clips, or weak pacing.
+
+### Files changed today
+- `frontend/src/app/editor/page.tsx`
+- `DAILY_IMPROVEMENTS.md`
+
+### Verification
+- ✅ `frontend`: `npm run build` passes after today's changes
+
+## 2026-04-09 (Thursday)
+
+### Research Summary
+
+**Latest AI video editing and API signals (past week)**
+- Google launched **Veo 3.1 Lite** on March 31 for lower-cost text-to-video and image-to-video, with 9:16 portrait support, 720p/1080p output, and 4s/6s/8s durations. Good reference for Tubee's future AI B-roll and insert-shot generation.
+- Anthropic's April 8 release notes added **Claude Managed Agents** and kept momentum behind **Sonnet 4.6 / Opus 4.6**. For Tubee, the relevant takeaway is still better instruction following, long-context handling, and prompt caching support.
+- Short-form editing trends this week are still centered on **hook-first cuts**, **fast 1-3s pacing**, **motion-matched transitions**, **freeze-frame / cutout moments**, **zoom reveals**, and **UGC-style authenticity**.
+
+**Claude / Anthropic relevance**
+- **Claude Sonnet 4.6** is now the best upgrade target for complex edit decisions without jumping straight to full Opus cost.
+- Anthropic's **automatic caching** and stronger instruction following are a direct fit for Tubee's long editing prompts and repeated scene-analysis requests.
+- Tubee should keep Haiku for cheap/simple edits, but route complex creative briefs to Sonnet 4.6.
+
+### Today's Improvements (actionable)
+
+#### 1. Fix transition preset mismatch
+**Priority:** High | **Status:** ✅ Implemented
+The editor UI was sending `smooth`, but the backend only understands values like `mixed`, `whip_pan`, and `zoom_blur`. I mapped `smooth` to `mixed` on the backend so existing frontend traffic stops silently losing that preference.
+
+#### 2. Add mobile-friendly edit controls in the editor UI
+**Priority:** High | **Status:** ✅ Implemented
+Added tap-friendly chips for:
+- style preset
+- target duration (15s, 30s, 45s, 60s)
+- transition feel
+
+These are much better for mobile than expecting users to type everything into the prompt.
+
+#### 3. Actually send style, duration, and transition preferences to the backend
+**Priority:** High | **Status:** ✅ Implemented
+The editor now sends real structured edit controls instead of hardcoded defaults. This should improve consistency, speed up prompting, and reduce user friction.
+
+#### 4. Upgrade Claude fallback routing for harder creative edits
+**Priority:** Medium | **Status:** ✅ Implemented
+Updated `ai_editor.py` so complex creative prompts route to **Claude Sonnet 4.6** on the Claude path, while simple edits stay on Haiku. Kimi remains the first-choice path when configured.
+
+#### 5. Refresh Tubee's trend prompt with current short-form patterns
+**Priority:** Medium | **Status:** ✅ Implemented
+Updated the AI editor prompt with fresher April 2026 patterns:
+- freeze-frame / cutout moments
+- zoom-reveal beats
+- motion-matched transitions
+- UGC authenticity
+- stronger hook-first pacing
+
+### What to build next
+1. **Auto pattern interrupts**: add optional speed ramps, snap zooms, flash frames, and quick reverses every 5-7s for social edits.
+2. **Template-driven prompts**: one-tap modes like Viral Reel, Talking Head, Product Tease, Event Recap.
+3. **AI insert generation**: test Veo-style generated B-roll or motion graphics for gaps in footage.
+4. **Preview thumbnails / first-frame chooser**: let users approve the opening hook before rendering the whole export.
+5. **Prompt caching + analytics**: reduce Anthropic cost and log which prompt structures produce the best retention-style edits.
+
+### Files changed today
+- `backend/ai_editor.py`
+- `backend/main.py`
+- `frontend/src/app/editor/page.tsx`
+
+### Verification
+- ✅ Frontend production build passes with `npm run build`
+- ✅ Python syntax check passes for edited backend files
+- ⚠️ `npx tsc --noEmit` currently complains about stale `.next/types` includes in the existing project config, but the actual Next.js production build succeeds
+
 ## 2026-04-01 (Tuesday)
 
 ### Research Summary

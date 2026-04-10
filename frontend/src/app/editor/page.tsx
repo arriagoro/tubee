@@ -33,6 +33,43 @@ const TRANSITION_OPTIONS = [
   { value: 'fade', label: 'Fade' },
 ];
 
+const FORMAT_OPTIONS = [
+  { value: 'reels', label: '9:16 Reels' },
+  { value: 'square', label: '1:1 Square' },
+  { value: 'landscape', label: '16:9 Landscape' },
+];
+
+const QUALITY_OPTIONS = [
+  { value: '1080p', label: '1080p' },
+  { value: '2k', label: '2K' },
+  { value: '4k', label: '4K' },
+];
+
+const PROMPT_TEMPLATES = [
+  {
+    label: 'Viral reel',
+    prompt: 'Make this a fast viral reel with a strong first-second hook, 1-2 second cuts, pattern interrupts, and clean beat-synced transitions.',
+  },
+  {
+    label: 'Talking head',
+    prompt: 'Turn this into a sharp talking-head reel with the best line first, remove dead air, keep pacing tight, and make it feel premium but natural.',
+  },
+  {
+    label: 'Product hype',
+    prompt: 'Create a punchy product-focused edit with quick reveals, snap zooms, bold energy, and a strong closing payoff.',
+  },
+  {
+    label: 'Cinematic mini',
+    prompt: 'Edit this like a short cinematic story with a hook first, polished pacing, motion-matched cuts, and one memorable ending beat.',
+  },
+];
+
+const HOOK_OPTIONS = [
+  { value: 'best-shot', label: 'Best shot first' },
+  { value: 'fastest-hook', label: 'Fastest hook' },
+  { value: 'best-line', label: 'Best line first' },
+];
+
 export default function EditorPage() {
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
 
@@ -77,6 +114,9 @@ export default function EditorPage() {
   const [selectedStyle, setSelectedStyle] = useState('cinematic');
   const [targetDuration, setTargetDuration] = useState<number>(30);
   const [transitionStyle, setTransitionStyle] = useState('mixed');
+  const [hookStyle, setHookStyle] = useState('best-shot');
+  const [outputFormat, setOutputFormat] = useState('reels');
+  const [exportQuality, setExportQuality] = useState('1080p');
   const [stage, setStage] = useState<Stage>('idle');
   const [progress, setProgress] = useState(0);
   const [statusMsg, setStatusMsg] = useState('');
@@ -197,11 +237,11 @@ export default function EditorPage() {
         headers: { ...HEADERS, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           job_id: id,
-          prompt: prompt.trim(),
+          prompt: `${prompt.trim()}\n\nOpening hook preference: ${hookStyle}. Prioritize this in the first 1-2 seconds.`,
           target_duration: targetDuration,
           style: selectedStyle,
-          export_quality: '1080p',
-          output_format: 'reels',
+          export_quality: exportQuality,
+          output_format: outputFormat,
           transition_style: transitionStyle,
           frame_analysis: true,
         }),
@@ -235,6 +275,9 @@ export default function EditorPage() {
     setSelectedStyle('cinematic');
     setTargetDuration(30);
     setTransitionStyle('mixed');
+    setHookStyle('best-shot');
+    setOutputFormat('reels');
+    setExportQuality('1080p');
     setStage('idle');
     setProgress(0);
     setStatusMsg('');
@@ -440,6 +483,30 @@ export default function EditorPage() {
           </button>
 
           <div style={{ marginBottom: 18 }}>
+            <div style={{ color: '#8EA2C8', fontSize: 13, marginBottom: 10, fontWeight: 600 }}>Quick start</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+              {PROMPT_TEMPLATES.map((template) => (
+                <button
+                  key={template.label}
+                  type="button"
+                  onClick={() => setPrompt(template.prompt)}
+                  disabled={isWorking}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 999,
+                    border: '1px solid rgba(166,255,77,0.22)',
+                    background: 'rgba(166,255,77,0.08)',
+                    color: '#D9FFAF',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: isWorking ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {template.label}
+                </button>
+              ))}
+            </div>
+
             <div style={{ color: '#8EA2C8', fontSize: 13, marginBottom: 10, fontWeight: 600 }}>Style</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
               {STYLE_OPTIONS.map((option) => {
@@ -520,6 +587,87 @@ export default function EditorPage() {
                 );
               })}
             </div>
+
+            <div style={{ color: '#8EA2C8', fontSize: 13, marginBottom: 10, fontWeight: 600 }}>Opening hook</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+              {HOOK_OPTIONS.map((option) => {
+                const active = hookStyle === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setHookStyle(option.value)}
+                    disabled={isWorking}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 999,
+                      border: active ? '1px solid #A6FF4D' : '1px solid rgba(166,255,77,0.22)',
+                      background: active ? 'rgba(166,255,77,0.12)' : '#0D1526',
+                      color: active ? '#F2FFD8' : '#B9C7A4',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: isWorking ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ color: '#8EA2C8', fontSize: 13, marginBottom: 10, fontWeight: 600 }}>Format</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+              {FORMAT_OPTIONS.map((option) => {
+                const active = outputFormat === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setOutputFormat(option.value)}
+                    disabled={isWorking}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 999,
+                      border: active ? '1px solid #00AAFF' : '1px solid rgba(0,170,255,0.18)',
+                      background: active ? 'rgba(0,170,255,0.12)' : '#0D1526',
+                      color: active ? '#DDF5FF' : '#8EA2C8',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: isWorking ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ color: '#8EA2C8', fontSize: 13, marginBottom: 10, fontWeight: 600 }}>Quality</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+              {QUALITY_OPTIONS.map((option) => {
+                const active = exportQuality === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setExportQuality(option.value)}
+                    disabled={isWorking}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 999,
+                      border: active ? '1px solid #00AAFF' : '1px solid rgba(0,170,255,0.18)',
+                      background: active ? 'rgba(0,170,255,0.12)' : '#0D1526',
+                      color: active ? '#DDF5FF' : '#8EA2C8',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: isWorking ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <textarea
@@ -547,7 +695,7 @@ export default function EditorPage() {
           />
 
           <div style={{ color: '#6E84AA', fontSize: 13, marginBottom: 18, lineHeight: 1.5 }}>
-            Quick tip: strongest reels usually open with the best shot in the first second, use 1-3 second cuts, and land major cuts on the beat.
+            Quick tip: strongest short-form edits open with the best shot in the first second, use 1-3 second cuts, and add a reveal, freeze, or zoom moment to reset attention.
           </div>
 
           {error && (
