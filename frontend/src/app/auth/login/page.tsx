@@ -82,13 +82,15 @@ export default function LoginPage() {
           )}
           {!showReset ? (
             <>
-              <input style={s} type="email" placeholder="Email address" value={email}
-                onChange={e => setEmail(e.target.value)} autoCapitalize="none" autoCorrect="off" />
-              <input style={s} type="password" placeholder="Password" value={password}
-                onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} />
-              <button onClick={handleLogin} disabled={loading} style={{ ...b, opacity: loading ? 0.7 : 1, marginBottom: 12 }}>
-                {loading ? 'Signing in...' : 'Sign In →'}
-              </button>
+              <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }}>
+                <input style={s} type="email" placeholder="Email address" value={email}
+                  onChange={e => setEmail(e.target.value)} autoCapitalize="none" autoCorrect="off" />
+                <input style={s} type="password" placeholder="Password" value={password}
+                  onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} />
+                <button type="submit" onClick={handleLogin} disabled={loading} style={{ ...b, opacity: loading ? 0.7 : 1, marginBottom: 12 }}>
+                  {loading ? 'Signing in...' : 'Sign In →'}
+                </button>
+              </form>
               <button onClick={() => setShowReset(true)} style={{ background: 'none', border: 'none', color: '#00AAFF', cursor: 'pointer', fontSize: 14, width: '100%', padding: '8px 0' }}>
                 Forgot password?
               </button>
