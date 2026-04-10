@@ -23,10 +23,10 @@ KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "")
 # Model routing
 # Primary: Kimi K2 Turbo (fast, smart, vision-capable, cheaper)
 # Fallback: Claude Haiku (if Kimi fails)
-# Premium: Claude Opus (for complex prompts)
+# Premium: Claude Sonnet 4.6 for harder creative briefs
 KIMI_MODEL = "kimi-k2-turbo-preview"
 CLAUDE_MODEL_FAST = os.environ.get("TUBEE_MODEL_FAST", "claude-haiku-4-5-20251001")
-CLAUDE_MODEL_PREMIUM = os.environ.get("TUBEE_MODEL_PREMIUM", "claude-haiku-4-5-20251001")  # Never use Sonnet/Opus
+CLAUDE_MODEL_PREMIUM = os.environ.get("TUBEE_MODEL_PREMIUM", "claude-sonnet-4-6")
 
 # Complexity keywords that trigger premium model routing
 _COMPLEX_KEYWORDS = {
@@ -38,24 +38,22 @@ _COMPLEX_KEYWORDS = {
 
 def smart_route_model(user_prompt: str, scene_count: int) -> str:
     """
-    Route to Haiku (fast/cheap) or Opus (premium) based on prompt complexity.
-    
-    Uses Opus 4.6 when:
-      - Prompt contains creative/complex keywords
-      - Many scenes (>15) requiring nuanced selection
-      - Prompt is long (>200 chars), suggesting detailed creative direction
+    Route Claude fallback traffic to Haiku or Sonnet based on edit complexity.
+
+    Kimi still runs first when configured. This only affects the Claude path.
     """
     prompt_lower = user_prompt.lower()
-    
-    # Check for complexity signals
+
     has_complex_keywords = any(kw in prompt_lower for kw in _COMPLEX_KEYWORDS)
     many_scenes = scene_count > 15
     detailed_prompt = len(user_prompt) > 200
-    
-    # Always use Kimi K2 (primary) or Haiku fallback — never Opus
-    # Opus costs 5x more for same quality on edit decisions
-    logger.info(f"Smart routing → Kimi K2 (cost optimized)")
-    return CLAUDE_MODEL_FAST  # Kimi handles this via the try-first block above
+
+    if has_complex_keywords or many_scenes or detailed_prompt:
+        logger.info("Smart routing → Claude premium model for complex creative edit")
+        return CLAUDE_MODEL_PREMIUM
+
+    logger.info("Smart routing → Claude fast model for standard edit")
+    return CLAUDE_MODEL_FAST
 
 
 def build_vision_edit_prompt(
@@ -168,14 +166,15 @@ def build_edit_prompt(
 
 TRENDING STYLES (April 2026 — use these when the user asks for "viral", "trending", or "social media" edits):
 - Fast Jump Cuts: Remove all dead air, cut every 1-3 seconds, keep energy high from frame 1
-- Beat-Synced Cuts: Every major cut lands on a beat or downbeat — this is non-negotiable for music videos
-- Kinetic Pacing: Start fast, breathe for 2-3 seconds mid-video, then accelerate to the end
-- Hook First: The most visually striking scene goes in the first 1.5 seconds, not at the end
-- Seamless Transitions: Prefer motion-matched cuts (whip pan → whip pan) over hard cuts when scenes have similar movement
-- UGC-Style Authenticity: Slightly imperfect, handheld feel with jump cuts — 161% higher conversion for brands
-- Micro-Cinematic: Short clips (15-30s) with cinematic color grading and shallow depth of field feel
-- Anime/Stylized Color: Bold, saturated color grades inspired by the anime/Ghibli aesthetic trend
-- Pattern Interrupts: Insert a 0.5-1s visual surprise (flash, zoom, reverse) every 5-7 seconds to reset attention
+- Beat-Synced Cuts: Every major cut lands on a beat or downbeat when music is present
+- Kinetic Pacing: Start fast, breathe for 1-2 seconds mid-video, then accelerate into the ending
+- Hook First: Put the strongest visual, line, or action inside the first 1.5 seconds
+- Seamless Transitions: Prefer motion-matched cuts, whip pans, punch-in zooms, and direction-matched cuts over random dissolves
+- UGC-Style Authenticity: Keep some handheld energy and human imperfection, do not over-polish everything
+- Micro-Cinematic: Short clips (15-30s) with polished grading, crisp contrast, and selective slow moments
+- Freeze-Frame / Cutout Moments: Use an occasional freeze or held frame feel when a scene has a strong pose or reveal
+- Zoom-Reveal / Sign Reveal Moments: Favor edits where the viewer discovers text, product, or punchline after a quick push-in
+- Pattern Interrupts: Insert a 0.3-0.8s visual surprise every 5-7 seconds, like a speed ramp, flash, quick reverse, or snap zoom
 
 YOU ARE THE WORLD'S MOST AGGRESSIVE, INTELLIGENT VIDEO EDITOR. You edit like a combination of Cole Bennett, David Fincher, and the best TikTok editors in the world. Every edit you make is CINEMATIC, PUNCHY, and VIRAL. You never make boring edits. You never just trim one clip. You create STORIES from raw footage.
 

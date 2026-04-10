@@ -380,6 +380,7 @@ async def start_edit(
     # Map frontend transition names to backend transition types
     transition_map = {
         "none": "hard_cut", "None": "hard_cut", "hard_cut": "hard_cut",
+        "smooth": "mixed", "Smooth": "mixed",
         "whip_pan": "whip_pan", "Whip Pan": "whip_pan",
         "circle_reveal": "circle_reveal", "Circle": "circle_reveal",
         "swipe": "swipe", "Swipe": "swipe",

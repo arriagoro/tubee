@@ -74,6 +74,107 @@
 
 ---
 
+## 2026-04-09 (Thursday)
+
+### 1. NEW AI MODELS (Last 7 Days)
+
+**Microsoft MAI-Transcribe-1 / MAI-Voice-1 / MAI-Image-2 (announced Apr 2, available now in Foundry)** — Microsoft released new media models for transcription, voice generation, and image generation. Pricing published by Microsoft: MAI-Transcribe-1 at **$0.36/hour**, MAI-Voice-1 at **$22 per 1M characters**, MAI-Image-2 at **$5 per 1M text-input tokens + $33 per 1M image-output tokens**.
+- **Should Tubee add this?** **YES, selectively.** MAI-Transcribe-1 is the most relevant for Tubee because transcription is a core editing primitive. Voice is useful later for voiceover generation. MAI-Image-2 matters more for thumbnail/storyboard tooling than core editing.
+- **Why?** Cheap transcription and voice APIs can improve captions, rough cuts, searchable transcripts, and multilingual workflows.
+- **How hard?** **Easy to medium.** Foundry integration plus eval against Whisper/Gemini/Assembly/OpenAI.
+- **Cost?** **Low.** Especially attractive for transcript-heavy workflows.
+
+### 2. VIDEO GENERATION API UPDATES
+
+**No major verified Runway/Kling/Luma/Sora/Veo API launch was clearly documented in the sources I could verify this morning.**
+- **Should Tubee add anything here?** **Not yet.** Keep existing watchlist, but do not ship against rumor-level changes.
+- **Why?** The market is noisy, and Tubee should build on stable, documented APIs only.
+- **How hard?** N/A
+- **Cost?** N/A
+
+**MAI-Image-2 commercial rollout is expanding** — Microsoft says MAI-Image-2 is rolling out on Copilot/Bing Image Creator and becoming broadly available in Foundry.
+- **Should Tubee add this?** **Maybe, but later.** This is more useful for thumbnails, key art, shot boards, and promo asset generation than timeline editing.
+- **Why?** Nice monetizable add-on, not core editor moat.
+- **How hard?** **Easy.** Straight API integration.
+- **Cost?** **Low to moderate.** Depends on image volume.
+
+### 3. NEW VIDEO EDITING AI TOOLS / COMPETITORS
+
+**No clearly verified major standalone AI video editor launch surfaced in the last 7 days from the sources I could confirm.**
+- **Should Tubee react?** **Yes, by focusing on execution instead of chasing every noisy launch.**
+- **Why?** This is a good sign. The market conversation is still centered on generation and media models, leaving room for Tubee to win on workflow and UX.
+- **How hard?** N/A
+- **Cost?** N/A
+
+### 4. PRICE DROPS / FREE TIERS TO WATCH
+
+**Microsoft MAI pricing is the clearest new low-cost signal this week**
+- Transcription: **$0.36/hour**
+- Voice generation: **$22 / 1M chars**
+- Image generation: **$5 / 1M input tokens, $33 / 1M output tokens**
+- **Should Tubee add this?** **YES for benchmarking immediately.**
+- **Why?** Even if Tubee does not adopt MAI directly, these prices set a new bar for what “cheap enough to bundle” looks like.
+- **How hard?** **Easy** to benchmark.
+- **Cost?** **Low**.
+
+**No major new free tier from core video generation leaders was verified this morning.**
+- **Should Tubee change roadmap because of this?** **No.**
+- **Why?** Focus on reliable margins, not waiting on competitors to get cheaper.
+- **How hard?** N/A
+- **Cost?** N/A
+
+### 5. VIRAL EDITING TECHNIQUES TRENDING ON TIKTok / INSTAGRAM REELS
+
+Based on CapCut’s 2026 trends page and Later’s weekly Reels roundup, the strongest currently visible patterns are:
+
+**A. AI-synced templates / beat-matched edits**
+- **Should Tubee add this?** **YES.**
+- **Why?** This is the easiest “wow” feature for creators and short-form editors.
+- **How hard?** **Medium.** Need beat detection + clip suggestion + one-tap template application.
+- **Cost?** **Low to moderate** if done locally with standard audio analysis.
+
+**B. Velocity edits (slow motion + speed ramps)**
+- **Should Tubee add this?** **YES.**
+- **Why?** Still one of the most reused attention hooks for reels and sports/lifestyle edits.
+- **How hard?** **Easy.** Mostly product/UX work plus a few smart presets.
+- **Cost?** **Low.**
+
+**C. “Frozen in time” cutout overlay effect**
+- **Should Tubee add this?** **YES, as a preset.**
+- **Why?** Good viral-format feature that looks advanced but is template-friendly.
+- **How hard?** **Medium.** Needs masking/cutout + motion sync.
+- **Cost?** **Low to moderate.**
+
+**D. Interactive / story-based short-form formats (“zoom in to get a sign”, choose-your-own-path style, day-in-my-life storytelling)**
+- **Should Tubee add this?** **Maybe.**
+- **Why?** Better as template packs than core engine work.
+- **How hard?** **Easy.** Mostly packaging and UX.
+- **Cost?** **Low.**
+
+### 6. OPEN SOURCE MODELS THAT COULD RUN LOCALLY ON M4 MAC MINI FOR FREE
+
+**Wan2.1 T2V-1.3B** — Hugging Face says it supports consumer-grade hardware; a Mac-focused repo reports it can run on a **32GB M4 Mac Mini** with MPS/offloading, generating short 480p clips locally.
+- **Should Tubee add this?** **YES, for R&D. Not production yet.**
+- **Why?** This is one of the clearest paths to free local video generation experiments on Apple Silicon.
+- **How hard?** **Medium to hard.** You’ll need inference wrappers, job management, and patience because runtime is slow.
+- **Cost?** **Free model cost**, but compute time is expensive in latency.
+
+**Gemma 4 family remains worth tracking from the Apr 2 release window** — especially for local multimodal understanding on Mac hardware.
+- **Should Tubee add this?** **YES.**
+- **Why?** Better fit for scene understanding, transcript-aware editing, shot labeling, and prompt routing than raw video generation.
+- **How hard?** **Medium.**
+- **Cost?** **Free locally.**
+
+### TOP 3 MOST ACTIONABLE FINDINGS
+
+1. **Benchmark Microsoft MAI-Transcribe-1 immediately** — $0.36/hour is cheap enough that Tubee can likely bundle captions, transcript search, and rough-cut assistance without killing margins.
+
+2. **Ship short-form preset features, not just “AI”** — beat-synced templates, speed ramps, and the “frozen in time” effect are concrete viral editing wins Tubee can productize fast.
+
+3. **Prototype Wan2.1 locally on the M4 Mac Mini** — not for production yet, but as a free internal R&D path for Apple-Silicon-native video generation experiments.
+
+---
+
 ## 2026-04-04 (Saturday)
 
 ### 1. NEW AI MODELS (Last 7 Days)
@@ -156,4 +257,106 @@
 2. **💰 Veo 3.1 Lite — Cheapest video generation API available** → With Sora dead, Google is aggressively pricing video gen. Lite is <$0.375/sec. Perfect for Tubee's AI video generation features. Apr 7 price cuts make it even better.
 
 3. **🎤 MAI-Transcribe-1 — Fast cheap transcription for auto-subtitles** → 2.5x faster than Azure, $0.36/hr, 25 languages. Perfect for Tubee's auto-caption/subtitle pipeline. Easy API integration.
+
+---
+
+## 2026-04-10 (Friday)
+
+### 1. NEW AI MODELS (Last 7 Days)
+
+**Gemma 4 family (Apr 2, Hugging Face/Google ecosystem)** — Multimodal open-weight family with image, video, and for smaller variants audio input support. Sizes include E2B, E4B, 31B dense, and 26B A4B MoE. Apache 2.0. MLX and llama.cpp ecosystem support make this unusually practical on Apple Silicon.
+- **Should Tubee add this?** YES, especially Gemma 4 E4B and 26B A4B.
+- **Why?** Tubee needs cheap local intelligence for scene understanding, clip labeling, OCR-on-frames, rough edit suggestions, and search over footage.
+- **How hard?** Medium. 1-2 weeks to test quantized local inference and build a vision analysis service around it.
+- **Cost?** FREE model weights. Hardware cost only.
+
+**Waypoint-1.5 (Apr 9, Hugging Face blog listing)** — New diffusion/world-model style release positioned around higher-fidelity interactive worlds on everyday GPUs.
+- **Should Tubee add this?** NOT now.
+- **Why?** Interesting for future camera-motion/world-consistency research, but not a direct editing feature for Tubee yet.
+- **How hard?** Hard.
+- **Cost?** Model may be free/open, but engineering cost is high.
+
+### 2. VIDEO GENERATION API / PLATFORM UPDATES
+
+**Seedance 2.0 is now showing up in production surfaces** — Replicate now advertises access to Seedance 2.0, and CapCut’s new Video Studio is reportedly built on Dreamina Seedance 2.0.
+- **Should Tubee add this?** YES, at least benchmark it.
+- **Why?** If ByteDance/CapCut is betting on it for creator workflows, Tubee should test it for prompt-to-shot generation, ad variants, and style-consistent short clips.
+- **How hard?** Easy to medium if accessed via Replicate or another hosted provider.
+- **Cost?** Variable, usage-based. Benchmark before committing.
+
+**Replicate video pricing snapshot** — Wan 2.1 i2v 480p listed at **$0.09/sec** and 720p at **$0.25/sec** of output video.
+- **Should Tubee add this?** MAYBE as fallback infrastructure, not core brand feature.
+- **Why?** Useful for rapid prototyping and model switching without direct infra work.
+- **How hard?** Easy.
+- **Cost?** Moderate. Good for experiments, maybe expensive at scale.
+
+### 3. NEW AI VIDEO EDITING COMPETITORS / COMPETITOR MOVES
+
+**CapCut Video Studio (reported Mar 25, rolling out)** — Timeline-free AI-first workspace that scripts, storyboards, generates scenes, keeps characters/styles consistent, then hands off to traditional editing tools.
+- **Should Tubee copy this direction?** YES.
+- **Why?** This is the clearest competitive signal this week. The market is moving from “timeline editor with AI tools” to “AI director with manual polish.” Tubee should build toward prompt-driven edit orchestration.
+- **How hard?** Hard as a full product, but medium for a narrow v1 like “turn this talking-head into 3 short variants.”
+- **Cost?** Product cost is meaningful, but this is strategic, not optional.
+
+**Luma’s site now pushes “creative agents” across video, image, audio, and text** — less about one-shot generation, more about end-to-end creative workflow.
+- **Should Tubee add this?** YES, conceptually.
+- **Why?** Tubee should not just be an editor. It should become an editing agent that keeps project context and executes multi-step transformations.
+- **How hard?** Hard.
+- **Cost?** Medium to high engineering cost, but strong product upside.
+
+### 4. PRICE DROPS / FREE TIERS / COST SIGNALS
+
+**ElevenLabs free plan remains strong for prototype voice features** — Free tier includes TTS, STT, sound effects, voice design, music, image/video surfaces, and 10k credits/month.
+- **Should Tubee use this?** YES for prototyping voiceovers, dub tests, and caption-adjacent features.
+- **Why?** Great way to validate features before locking into paid speech infra.
+- **How hard?** Easy.
+- **Cost?** Free to start, then low-end paid tiers from $5/month.
+
+**Replicate stays valuable as a pay-as-you-go model router** — Strong if Tubee wants optionality instead of hard-wiring one video provider too early.
+- **Should Tubee use this?** YES, for R&D.
+- **Why?** Lets Tubee compare Seedance, Wan, Flux-class image tools, and more without custom hosting.
+- **How hard?** Easy.
+- **Cost?** Pay-per-use. Good for tests, watch margin at production scale.
+
+### 5. VIRAL EDITING TECHNIQUES TRENDING ON TIKTOK / REELS
+
+**Template-led edits are still dominant** — CapCut is explicitly leaning into one-click trending edits, advanced transitions, and AI enhancement templates for TikTok/Reels.
+- **Should Tubee add this?** YES.
+- **Why?** Tubee needs reusable “outcome templates,” not just tools. Example: podcast clip, realtor reel, cinematic product cut, church recap, talking-head ad.
+- **How hard?** Medium.
+- **Cost?** Low to medium. Mostly product/design and automation logic.
+
+**Timeline-free creation is emerging as the viral-friendly workflow** — Fast storyboard-to-export flows are becoming the new expectation for short-form content.
+- **Should Tubee add this?** YES.
+- **Why?** Speed wins in Reels/TikTok. Tubee should reduce decision fatigue and get users to publish faster.
+- **How hard?** Medium for guided workflows, hard for fully autonomous creation.
+- **Cost?** Medium engineering cost.
+
+### 6. OPEN SOURCE / LOCAL MODELS FOR M4 MAC MINI
+
+**Gemma 4 E4B**
+- **Should Tubee add this?** YES.
+- **Why?** Best near-term local option for lightweight multimodal tasks on M4 Mac Mini.
+- **How hard?** Easy to medium.
+- **Cost?** FREE.
+
+**Gemma 4 26B A4B**
+- **Should Tubee add this?** YES.
+- **Why?** Best bigger local model for richer reasoning over footage while still being feasible on Apple Silicon with quantization.
+- **How hard?** Medium.
+- **Cost?** FREE.
+
+**Wan-class open video models via hosted/open ecosystems**
+- **Should Tubee add this?** TEST, don’t commit.
+- **Why?** Useful for low-cost experiments and potential local/self-hosted future paths, but quality/latency/product fit still need proof.
+- **How hard?** Medium.
+- **Cost?** Free weights in some cases, but compute is the real cost.
+
+### TOP 3 ACTIONABLE FINDINGS
+
+1. **Gemma 4 is still the biggest win** — Tubee should start a local Apple Silicon eval immediately. It is the cleanest path to free multimodal footage understanding on the M4 Mac Mini.
+
+2. **CapCut’s timeline-free Video Studio is the clearest product threat** — Tubee should build a narrow AI-director workflow now, not later. Best first wedge: “turn this source clip into 3 polished short-form edits.”
+
+3. **Use Replicate as Tubee’s fast R&D layer** — benchmark Seedance 2.0, Wan, and related video/image models there before committing to any one provider. It keeps experimentation cheap and fast.
 
