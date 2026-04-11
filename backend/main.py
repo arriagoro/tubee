@@ -66,10 +66,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_PRICE_IDS = {
-    "starter": os.environ.get("STRIPE_STARTER_PRICE_ID", "price_1TJjT2DH4sbUuaKWhKwNKo82"),
-    "pro": os.environ.get("STRIPE_PRO_PRICE_ID", "price_1TJjTzDH4sbUuaKWSwn69u09"),
-}
+STRIPE_SINGLE_PRICE_ID = os.environ.get("STRIPE_SINGLE_PRICE_ID") or os.environ.get("STRIPE_STARTER_PRICE_ID", "price_1TJjT2DH4sbUuaKWhKwNKo82")
 
 # ---------------------------------------------------------------------------
 # Supabase admin client (service role for webhook updates)
@@ -123,8 +120,8 @@ class EditRequest(BaseModel):
     style: Optional[str] = None          # Style preset: cole_bennett, cinematic, vintage, clean, neon
     aspect_ratio: Optional[str] = None   # Aspect ratio: 9:16, 1:1, 4:5, 16:9, 4:3
     transition_style: Optional[str] = None  # Transition: hard_cut, whip_pan, circle_reveal, swipe, zoom_blur, glitch, mixed, fade
-    export_quality: str = "1080p"        # Export quality: "1080p", "2k", "4k"
-    output_format: str = "reels"         # Output format: "reels", "landscape", "square"
+    export_quality: str = "1080p"        # Export quality: "720p", "1080p", "2k", "4k"
+    output_format: str = "reels"         # Output format: "reels", "portrait", "landscape", "square"
     frame_analysis: bool = True          # Extract frames for Kimi K2 vision analysis
 
 
@@ -2267,9 +2264,11 @@ async def create_checkout_session_endpoint(request: CheckoutSessionRequest) -> D
     Create a Stripe Checkout session for subscription payment.
     Returns the checkout URL to redirect the user to.
     """
-    price_id = STRIPE_PRICE_IDS.get(request.plan)
+    # Single-plan launch: ignore plan selection and always use the one active price
+    price_id = STRIPE_SINGLE_PRICE_ID
+    plan = "pro"
     if not price_id:
-        raise HTTPException(status_code=400, detail=f"Invalid plan: {request.plan}. Must be 'starter' or 'pro'.")
+        raise HTTPException(status_code=500, detail="Stripe price is not configured.")
 
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Stripe is not configured on the server.")
@@ -2283,13 +2282,13 @@ async def create_checkout_session_endpoint(request: CheckoutSessionRequest) -> D
             metadata={
                 "user_id": request.user_id,
                 "supabase_user_id": request.user_id,
-                "plan": request.plan,
+                "plan": plan,
             },
             success_url="https://tubee.itsthatseason.com/editor?payment=success",
             cancel_url="https://tubee.itsthatseason.com/pricing?payment=cancelled",
             allow_promotion_codes=True,
         )
-        logger.info(f"Checkout session created for user {request.user_id} ({request.plan})")
+        logger.info(f"Checkout session created for user {request.user_id} ({plan})")
         return {"checkout_url": session.url}
     except stripe.error.StripeError as e:
         logger.error(f"Stripe checkout error: {e}")
@@ -2343,13 +2342,11 @@ async def stripe_webhook_endpoint(request: Request):
                 try:
                     sub = stripe.Subscription.retrieve(subscription_id)
                     price_id = sub["items"]["data"][0]["price"]["id"] if sub["items"]["data"] else None
-                    for p, pid in STRIPE_PRICE_IDS.items():
-                        if pid == price_id:
-                            plan = p
-                            break
+                    if price_id == STRIPE_SINGLE_PRICE_ID:
+                        plan = "pro"
                 except Exception:
                     pass
-            plan = plan or "starter"  # fallback
+            plan = plan or "pro"  # fallback
 
         logger.info(f"Webhook: activating subscription for user={user_id}, plan={plan}, customer={customer_id}")
 
