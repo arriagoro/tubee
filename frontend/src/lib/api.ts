@@ -1,5 +1,5 @@
-const RAILWAY = 'https://tubee-api.itsthatseason.com';
-const NGROK = 'https://tubee-api.itsthatseason.com'; // same host, no fallback needed
+const RAILWAY = 'http://87.99.150.93';
+const NGROK = 'http://87.99.150.93'; // Hetzner VPS — swap to https://tubee-api.itsthatseason.com after DNS propagates
 export const SKIP_NGROK = { 'ngrok-skip-browser-warning': 'true' };
 
 async function getApiBase(): Promise<string> {
