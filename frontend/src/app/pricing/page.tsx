@@ -10,20 +10,23 @@ import { grantFreeTrial } from '@/lib/auth';
 
 const plans = [
   {
-    name: 'Pro',
+    name: 'Tubee',
     plan_key: 'pro' as const,
-    price: 29.99,
-    badge: 'Simple Launch Plan',
+    price: 29,
+    badge: null,
     features: [
-      'Unlimited AI edits',
-      '1080p export',
+      'Unlimited AI video edits',
+      '1080p HD export',
       'All style presets & transitions',
-      'Instagram Reel format',
+      'Instagram Reels format',
       'Hook-first edits',
-      'Talking-head, product, and cinematic templates',
+      'Talking-head, product & cinematic templates',
+      'Beat-synced cuts',
+      'Auto-Clipper',
+      'Captions',
       'Future updates included',
     ],
-    cta: 'Start Editing',
+    cta: 'Start Editing — $29/mo',
     highlighted: true,
   },
 ];
@@ -166,10 +169,10 @@ export default function PricingPage() {
             fontSize: 40, fontWeight: 900, marginTop: 24, marginBottom: 12,
             letterSpacing: '-0.02em', lineHeight: 1.1,
           }}>
-            Choose your plan
+            Everything you need to edit smarter.
           </h1>
           <p style={{ color: '#8899BB', fontSize: 17, maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>
-            Start creating AI-powered video edits today. Cancel anytime.
+            One plan. Everything included. $29/month. Cancel anytime.
           </p>
         </div>
 
