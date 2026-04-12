@@ -1399,6 +1399,7 @@ async def generate_image_to_video_endpoint(
     duration: int = Form(5),
     style: str = Form("cinematic"),
     aspect_ratio: str = Form("9:16"),
+    user_id: str = Form(""),
     background_tasks: BackgroundTasks = None,
 ) -> Dict[str, Any]:
     """
@@ -1407,6 +1408,35 @@ async def generate_image_to_video_endpoint(
     """
     if not image.filename:
         raise HTTPException(status_code=400, detail="No image file provided")
+
+    # Check and deduct generation credits
+    if user_id and supabase_admin:
+        try:
+            result = supabase_admin.table("usage_credits").select("*").eq("user_id", user_id).limit(1).execute()
+            if result.data:
+                credits = result.data[0]
+                if credits["generation_credits_remaining"] <= 0:
+                    raise HTTPException(
+                        status_code=402,
+                        detail="No generation credits remaining. Purchase more credits to continue."
+                    )
+                # Deduct 1 credit
+                supabase_admin.table("usage_credits").update({
+                    "generation_credits_remaining": credits["generation_credits_remaining"] - 1,
+                    "generation_credits_used": credits["generation_credits_used"] + 1,
+                    "updated_at": datetime.utcnow().isoformat()
+                }).eq("user_id", user_id).execute()
+            else:
+                # No credits row — create one with 10 credits and deduct 1
+                supabase_admin.table("usage_credits").insert({
+                    "user_id": user_id,
+                    "generation_credits_remaining": 9,
+                    "generation_credits_used": 1,
+                }).execute()
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"Credit check failed for {user_id}: {e}")
 
     job_id = str(uuid.uuid4())
     job_upload_dir = UPLOADS_DIR / job_id
@@ -2409,6 +2439,26 @@ async def stripe_webhook_endpoint(request: Request):
                 logger.error(f"Webhook: failed to update subscription in Supabase: {e}")
 
     return {"status": "success", "event_type": event_type}
+
+
+@app.get("/credits/{user_id}", summary="Get user generation credits")
+async def get_credits_endpoint(user_id: str) -> Dict[str, Any]:
+    """Get remaining generation credits for a user."""
+    if not supabase_admin:
+        return {"generation_credits_remaining": 10, "generation_credits_used": 0}
+    try:
+        result = supabase_admin.table("usage_credits").select("*").eq("user_id", user_id).limit(1).execute()
+        if result.data:
+            c = result.data[0]
+            return {
+                "generation_credits_remaining": c["generation_credits_remaining"],
+                "generation_credits_used": c["generation_credits_used"],
+                "reset_at": c.get("reset_at"),
+            }
+        return {"generation_credits_remaining": 10, "generation_credits_used": 0}
+    except Exception as e:
+        logger.error(f"Credits fetch failed: {e}")
+        return {"generation_credits_remaining": 10, "generation_credits_used": 0}
 
 
 @app.get("/subscription-status/{user_id}", summary="Check subscription status")
