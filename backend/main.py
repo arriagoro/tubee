@@ -744,6 +744,7 @@ def _run_processing_task(job_id: str, target_duration: Optional[float] = None, s
             export_quality=export_quality,
             output_format=output_format,
             frame_analysis=frame_analysis,
+            target_duration=target_duration,
         )
 
         # Success

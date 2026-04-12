@@ -35,6 +35,12 @@ DEFAULT_FPS = 30
 
 # ── Export quality tiers ─────────────────────────────────────────────────
 QUALITY_TIERS = {
+    "720p": {
+        "crf": "22",
+        "preset": "veryfast",
+        "video_bitrate": "4M",
+        "max_bitrate": "5M",
+    },
     "1080p": {
         "crf": "18",
         "preset": "slow",
@@ -61,15 +67,27 @@ OUTPUT_FORMATS = {
         "aspect": "9:16",
         "orientation": "portrait",
         "resolutions": {
+            "720p":  (720, 1280),
             "1080p": (1080, 1920),
             "2k":    (1440, 2560),
             "4k":    (2160, 3840),
+        },
+    },
+    "portrait": {
+        "aspect": "4:5",
+        "orientation": "portrait",
+        "resolutions": {
+            "720p":  (720, 900),
+            "1080p": (1080, 1350),
+            "2k":    (1440, 1800),
+            "4k":    (2160, 2700),
         },
     },
     "landscape": {
         "aspect": "16:9",
         "orientation": "landscape",
         "resolutions": {
+            "720p":  (1280, 720),
             "1080p": (1920, 1080),
             "2k":    (2560, 1440),
             "4k":    (3840, 2160),
@@ -79,6 +97,7 @@ OUTPUT_FORMATS = {
         "aspect": "1:1",
         "orientation": "square",
         "resolutions": {
+            "720p":  (720, 720),
             "1080p": (1080, 1080),
             "2k":    (1440, 1440),
             "4k":    (2160, 2160),
@@ -178,6 +197,7 @@ def process_job(
     output_format: Optional[str] = None,
     frame_analysis: bool = True,
     auto_music: bool = False,
+    target_duration: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Main processing pipeline. Takes raw footage and returns a finished video.
@@ -308,7 +328,8 @@ def process_job(
     progress("Asking AI for edit decisions", 45)
 
     # --- STEP 3: AI editing decisions ---
-    target_duration = beat_data["total_duration"] if beat_data else None
+    if target_duration is None:
+        target_duration = beat_data["total_duration"] if beat_data else None
 
     try:
         decisions = get_edit_decisions(
