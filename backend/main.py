@@ -66,7 +66,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_SINGLE_PRICE_ID = os.environ.get("STRIPE_SINGLE_PRICE_ID") or os.environ.get("STRIPE_STARTER_PRICE_ID", "price_1TJjT2DH4sbUuaKWhKwNKo82")
+STRIPE_SINGLE_PRICE_ID = os.environ.get("STRIPE_SINGLE_PRICE_ID") or os.environ.get("STRIPE_STARTER_PRICE_ID", "price_1TLCfZDH4sbUuaKWNcPFaMbO")
 
 # ---------------------------------------------------------------------------
 # Supabase admin client (service role for webhook updates)
@@ -2294,9 +2294,9 @@ async def create_checkout_session_endpoint(request: CheckoutSessionRequest) -> D
     Create a Stripe Checkout session for subscription payment.
     Returns the checkout URL to redirect the user to.
     """
-    # Single-plan launch: ignore plan selection and always use the one active price
+    # Single-plan launch: low-friction monthly subscription with usage-based generation credits
     price_id = STRIPE_SINGLE_PRICE_ID
-    plan = "pro"
+    plan = "tubee_monthly"
     if not price_id:
         raise HTTPException(status_code=500, detail="Stripe price is not configured.")
 
@@ -2373,10 +2373,10 @@ async def stripe_webhook_endpoint(request: Request):
                     sub = stripe.Subscription.retrieve(subscription_id)
                     price_id = sub["items"]["data"][0]["price"]["id"] if sub["items"]["data"] else None
                     if price_id == STRIPE_SINGLE_PRICE_ID:
-                        plan = "pro"
+                        plan = "tubee_monthly"
                 except Exception:
                     pass
-            plan = plan or "pro"  # fallback
+            plan = plan or "tubee_monthly"  # fallback
 
         logger.info(f"Webhook: activating subscription for user={user_id}, plan={plan}, customer={customer_id}")
 

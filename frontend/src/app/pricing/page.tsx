@@ -12,8 +12,8 @@ const plans = [
   {
     name: 'Tubee',
     plan_key: 'pro' as const,
-    price: 29,
-    badge: null,
+    price: 9.99,
+    badge: 'Launch Offer',
     features: [
       'Unlimited AI video edits',
       '1080p HD export',
@@ -23,10 +23,10 @@ const plans = [
       'Talking-head, product & cinematic templates',
       'Beat-synced cuts',
       'Auto-Clipper',
-      'Captions',
-      'Future updates included',
+      '5 AI generation credits included monthly',
+      'Buy more credits anytime',
     ],
-    cta: 'Start Editing — $29/mo',
+    cta: 'Start Editing — $9.99/mo',
     highlighted: true,
   },
 ];
@@ -172,7 +172,7 @@ export default function PricingPage() {
             Everything you need to edit smarter.
           </h1>
           <p style={{ color: '#8899BB', fontSize: 17, maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>
-            One plan. Everything included. $29/month. Cancel anytime.
+Low monthly price, then scale with credits. $9.99/month includes 5 AI generation credits. Cancel anytime.
           </p>
         </div>
 
