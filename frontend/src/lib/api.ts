@@ -1,5 +1,5 @@
-const RAILWAY = 'https://tubee-production.up.railway.app';
-const NGROK = 'https://unparcelling-unnecessitating-randa.ngrok-free.dev';
+const RAILWAY = 'https://tubee-api.itsthatseason.com';
+const NGROK = 'https://tubee-api.itsthatseason.com'; // same host, no fallback needed
 export const SKIP_NGROK = { 'ngrok-skip-browser-warning': 'true' };
 
 async function getApiBase(): Promise<string> {
